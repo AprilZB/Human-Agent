@@ -97,7 +97,7 @@ const initChart = () => {
   const myChart = echarts.init(chartRef.value)
   const option = {
     tooltip: { trigger: 'item' },
-    legend: { top: '5%', left: 'center', textStyle: { color: 'var(--text-primary)' } },
+    legend: { top: '5%', left: 'center' },
     series: [
       {
         name: '出勤情况',
@@ -106,18 +106,18 @@ const initChart = () => {
         avoidLabelOverlap: false,
         itemStyle: {
           borderRadius: 10,
-          borderColor: 'var(--bg-card)',
+          borderColor: '#fff',
           borderWidth: 2
         },
         label: { show: false, position: 'center' },
         emphasis: {
-          label: { show: true, fontSize: 18, fontWeight: 'bold', color: 'var(--text-primary)' }
+          label: { show: true, fontSize: 18, fontWeight: 'bold' }
         },
         labelLine: { show: false },
         data: [
-          { value: 18, name: '正常出勤', itemStyle: { color: 'var(--color-primary)' } },
-          { value: 2, name: '请假', itemStyle: { color: 'var(--color-warning)' } },
-          { value: 1, name: '旷工', itemStyle: { color: 'var(--color-danger)' } }
+          { value: 18, name: '正常出勤', itemStyle: { color: '#409EFF' } },
+          { value: 2, name: '请假', itemStyle: { color: '#E6A23C' } },
+          { value: 1, name: '旷工', itemStyle: { color: '#F56C6C' } }
         ]
       }
     ]
