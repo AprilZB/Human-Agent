@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="dashboard-container">
     <!-- 顶部基础信息 -->
     <el-row :gutter="20" class="mb-20">
@@ -63,13 +63,26 @@
           </div>
           
           <el-table :data="pendingOrders" border stripe style="width: 100%">
-            <el-table-column prop="work_order_code" label="工单号" width="180" />
-            <el-table-column prop="process_code" label="工序代码" width="120" />
-            <el-table-column prop="required_count" label="所需人数" width="100" align="center" />
-            <el-table-column prop="created_at" label="生成时间" />
-            <el-table-column label="操作" width="150" align="center">
+            <el-table-column prop="work_order_code" label="工单号" width="160" />
+            <el-table-column prop="material_code" label="产品代码" width="120" />
+            <el-table-column prop="process_name" label="工序" width="100" />
+            <el-table-column prop="target_quantity" label="目标数量" width="90" align="center" />
+            <el-table-column prop="required_count" label="需人数" width="70" align="center" />
+            <el-table-column label="系统派工建议">
               <template #default="scope">
-                <el-button type="primary" size="small" @click="openDispatchDialog(scope.row)">智能派工</el-button>
+                <el-tooltip v-for="emp in scope.row.assignments" :key="emp.employee_id" :content="emp.reason" placement="top">
+                  <el-tag size="small" type="warning" class="mr-10 mb-10">
+                    {{ getEmpLabel(emp.employee_id) }} (AI推)
+                  </el-tag>
+                </el-tooltip>
+                <span v-if="!scope.row.assignments || scope.row.assignments.length === 0" class="text-muted">暂无预案</span>
+              </template>
+            </el-table-column>
+            
+            <el-table-column label="操作" width="180" align="center">
+              <template #default="scope">
+                <el-button type="success" size="small" @click="quickConfirm(scope.row)">一键确认</el-button>
+                <el-button type="primary" plain size="small" @click="openDispatchDialog(scope.row)">调配</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -92,17 +105,18 @@
           </div>
 
           <el-table :data="dispatchedOrders" border stripe style="width: 100%">
-            <el-table-column prop="work_order_code" label="工单号" width="180" />
-            <el-table-column prop="process_code" label="工序代码" width="120" />
+            <el-table-column prop="work_order_code" label="工单号" width="160" />
+            <el-table-column prop="material_code" label="产品代码" width="120" />
+            <el-table-column prop="process_name" label="工序" width="100" />
             <el-table-column prop="created_at" label="生成时间" width="160" />
             <el-table-column label="已派发人员">
               <template #default="scope">
-                <el-tag v-for="emp in scope.row.assignments" :key="emp.employee_id" size="small" class="mr-10 mb-10">
+                <el-tag v-for="emp in scope.row.assignments" :key="emp.employee_id" size="small" type="success" class="mr-10 mb-10">
                   {{ getEmpLabel(emp.employee_id) }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="状态" width="100" align="center">
+            <el-table-column label="状态" width="80" align="center">
               <template #default="scope">
                 <el-tag type="success">已派发</el-tag>
               </template>
@@ -223,24 +237,51 @@ const handleTabChange = (name: string) => {
   else if (name === 'dispatched') fetchDispatchedOrders()
 }
 
+const quickConfirm = async (wo: any) => {
+  if (!wo.assignments || wo.assignments.length === 0) {
+    ElMessage.warning('该工单暂无系统推荐方案，请手动调配')
+    return
+  }
+  const emps = wo.assignments.map((a: any) => a.employee_id)
+  
+  try {
+    await axios.post('http://localhost:8100/api/v1/prod/work-orders/' + wo.work_order_code + '/confirm-dispatch', {
+      employees: emps
+    })
+    ElMessage.success('一键派工成功！')
+    fetchPendingOrders()
+  } catch (error) {
+    ElMessage.error('确认派工失败')
+  }
+}
+
 const openDispatchDialog = async (wo: any) => {
   currentWo.value = wo
   dialogVisible.value = true
-  matchLoading.value = true
   selectedEmployees.value = []
   aiReasons.value = {}
   
-  try {
-    const res = await axios.post('http://localhost:8100/api/v1/prod/work-orders/' + wo.work_order_code + '/match')
-    const assignments = res.data.assignments || []
-    assignments.forEach((a: any) => {
+  if (wo.assignments && wo.assignments.length > 0) {
+    // 使用已有的预分配方案
+    wo.assignments.forEach((a: any) => {
       selectedEmployees.value.push(a.employee_id)
       aiReasons.value[a.employee_id] = a.reason
     })
-  } catch (error) {
-    ElMessage.warning('智能匹配失败，请手动分配')
-  } finally {
-    matchLoading.value = false
+  } else {
+    // 若无预案则触发智能匹配
+    matchLoading.value = true
+    try {
+      const res = await axios.post('http://localhost:8100/api/v1/prod/work-orders/' + wo.work_order_code + '/match')
+      const assignments = res.data.assignments || []
+      assignments.forEach((a: any) => {
+        selectedEmployees.value.push(a.employee_id)
+        aiReasons.value[a.employee_id] = a.reason
+      })
+    } catch (error) {
+      ElMessage.warning('智能匹配失败，请手动分配')
+    } finally {
+      matchLoading.value = false
+    }
   }
 }
 
@@ -260,7 +301,6 @@ const confirmDispatch = async () => {
     ElMessage.success('派工成功！工单已流转。')
     dialogVisible.value = false
     fetchPendingOrders()
-    // 不用马上刷已派发列表，切换tab时会自动刷新
   } catch (error) {
     ElMessage.error('确认派工失败')
   }
@@ -273,7 +313,7 @@ const printDispatch = () => {
 
 const dingtalkPush = async () => {
   try {
-    const res = await axios.post('http://localhost:8100/api/v1/prod/dingtalk-push', {
+    await axios.post('http://localhost:8100/api/v1/prod/dingtalk-push', {
       phone: '15957270693',
       message: '【派工提醒】您被分配到了工单：' + currentWo.value?.work_order_code
     })

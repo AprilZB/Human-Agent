@@ -1,6 +1,6 @@
 ﻿from flask import Blueprint, jsonify, request
 from app.core.database import SessionLocal
-from app.models.production import BizProductionOrder, BizWorkOrder, TaskPersonnelAssignment
+from app.models.production import BizProductionOrder, BizWorkOrder, TaskPersonnelAssignment, BaseProcess
 from app.services.dispatch_service import decompose_production_order
 from app.services.match_service import run_intelligent_matching
 import asyncio
@@ -45,7 +45,6 @@ def get_work_orders():
             except ValueError:
                 pass
         
-        # Support old 'date' param for backwards compatibility
         date_str = request.args.get('date')
         if date_str:
             try:
@@ -59,24 +58,30 @@ def get_work_orders():
 
         status_filter = request.args.get('status')
         if status_filter:
-            # support comma separated statuses
             statuses = status_filter.split(',')
             query = query.filter(BizWorkOrder.status.in_(statuses))
         else:
             query = query.filter(BizWorkOrder.status.in_(['PENDING', 'UNASSIGNED']))
 
-        # order by created_at desc
         query = query.order_by(BizWorkOrder.created_at.desc())
-
         wos = query.all()
+        
         result = []
         for wo in wos:
+            # fetch related production order and process for details
+            po = db.query(BizProductionOrder).filter(BizProductionOrder.order_code == wo.order_code).first()
+            proc = db.query(BaseProcess).filter(BaseProcess.process_code == wo.process_code).first()
+            
             assignments = db.query(TaskPersonnelAssignment).filter(TaskPersonnelAssignment.work_order_code == wo.work_order_code).all()
             emps = [{"employee_id": a.employee_id, "reason": a.recommend_reason} for a in assignments]
+            
             result.append({
                 "work_order_code": wo.work_order_code,
                 "order_code": wo.order_code,
+                "material_code": po.material_code if po else '未知产品',
+                "target_quantity": po.target_quantity if po else 0,
                 "process_code": wo.process_code,
+                "process_name": proc.process_name if proc else '未知工序',
                 "required_count": wo.required_count,
                 "status": wo.status,
                 "created_at": wo.created_at.strftime('%Y-%m-%d %H:%M:%S') if wo.created_at else None,
