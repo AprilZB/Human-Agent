@@ -33,7 +33,7 @@
     </el-row>
 
     <!-- 异常预警 -->
-    <el-card shadow="hover" class="mb-20 alert-card" body-style="padding: 10px 20px;">
+    <el-card shadow="hover" class="mb-20 alert-card" body-style="padding: 10px 20px; overflow: hidden;">
       <div class="alert-marquee">
         <el-icon color="#F56C6C" class="mr-10"><Warning /></el-icon>
         <span class="text-danger fw-bold">异常预警：</span>
@@ -49,7 +49,7 @@
       <el-tabs v-model="activeTab" @tab-change="handleTabChange">
         
         <!-- 待派工任务 -->
-        <el-tab-pane label="待派工任务 (自动滤除已派发)" name="pending">
+        <el-tab-pane label="待派工任务" name="pending">
           <div class="filter-bar mb-20">
             <span class="mr-10">选择派工日期:</span>
             <el-date-picker
