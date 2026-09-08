@@ -34,13 +34,13 @@
 
     <!-- 异常预警 -->
     <el-card shadow="hover" class="mb-20 alert-card" body-style="padding: 10px 20px; overflow: hidden;">
-      <div class="alert-marquee">
+      <div class="alert-marquee" :class="{ 'paused': alertDetailVisible }">
         <el-icon color="#F56C6C" class="mr-10"><Warning /></el-icon>
         <span class="text-danger fw-bold">异常预警：</span>
-        <span class="alert-item">[超时] 张三本周加班已超规定时长</span>
-        <span class="alert-item">[设备] 冲压机#03 需要例行保养</span>
-        <span class="alert-item">[生产] 存在1笔紧急插单任务待处理</span>
-        <span class="alert-item">[品质] A工序昨日出现轻微尺寸偏移</span>
+        <span v-for="(item, index) in alerts" :key="index" class="alert-item" @click="showAlertDetail(item)">
+          <span :style="{ color: item.color, fontWeight: 'bold', marginRight: '4px' }">[{{ item.type }}]</span>
+          <span class="alert-content">{{ item.content }}</span>
+        </span>
       </div>
     </el-card>
 
@@ -126,6 +126,16 @@
         
       </el-tabs>
     </el-card>
+    <!-- 预警详情弹窗 -->
+    <el-dialog v-model="alertDetailVisible" :title="`预警详情 - ${currentAlert?.type}`" width="500px">
+      <div style="line-height: 1.6; white-space: pre-wrap;">
+        <p><strong>内容概览：</strong><br/>{{ currentAlert?.content }}</p>
+        <p><strong>详细信息：</strong><br/>{{ currentAlert?.detail }}</p>
+      </div>
+      <template #footer>
+        <el-button type="primary" @click="alertDetailVisible = false">知道了</el-button>
+      </template>
+    </el-dialog>
 
     <!-- 派工预览及调整弹窗 -->
     <el-dialog v-model="dialogVisible" title="人员分配预览与调整" width="600px" destroy-on-close>
@@ -177,6 +187,20 @@ import dayjs from 'dayjs'
 
 const activeTab = ref('pending')
 
+// 预警数据
+const alertDetailVisible = ref(false)
+const currentAlert = ref<any>(null)
+const alerts = ref([
+  { type: '超时', color: '#F56C6C', content: '张三本周加班已超规定时长', detail: '员工张三 (EMP001) 本周累计加班达到 38 小时，超过了车间规定的单周 36 小时上限。为了员工身心健康与合规，已将其从本周候选名单中暂时移除，建议班组长关注。' },
+  { type: '设备', color: '#E6A23C', content: '冲压机#03 需要例行保养', detail: '设备编号：EQ-P-03\n下次保养日期应为今日。当前状态可能影响加工精度，请及时联系设备科或提交保养工单。' },
+  { type: '生产', color: '#409EFF', content: '存在1笔紧急插单任务待处理', detail: '工单号：WO-URGENT-001\n客户要求在明日前完成交付。该单已进入加急队列，请优先派工。' },
+  { type: '品质', color: '#F56C6C', content: 'A工序昨日出现轻微尺寸偏移', detail: '涉及批次：LOT-20260907\n质检部反馈昨日的冲压件存在 0.02mm 的尺寸公差偏移，建议今天开工前重新校准模具。' }
+])
+
+const showAlertDetail = (item: any) => {
+  currentAlert.value = item
+  alertDetailVisible.value = true
+}
 // 待派工数据
 const pendingDate = ref(dayjs().format('YYYY-MM-DD'))
 const pendingOrders = ref<any[]>([])
@@ -371,9 +395,19 @@ onMounted(() => {
   overflow: hidden;
   animation: marquee 20s linear infinite;
 }
+.alert-marquee:hover, .alert-marquee.paused {
+  animation-play-state: paused;
+}
 .alert-item {
   margin-right: 30px;
-  color: #E6A23C;
+  color: #606266;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+}
+.alert-content:hover {
+  text-decoration: underline;
+  color: #409EFF;
 }
 @keyframes marquee {
   0% { transform: translateX(50%); }
