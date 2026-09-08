@@ -2,7 +2,7 @@
   <el-container class="app-wrapper">
     <el-header class="app-header">
       <div class="logo">
-        <img src="@/assets/logo/LOGO.png" alt="logo" style="height: 32px;" />
+        <img src="@/assets/logo/LOGO.png" alt="logo" style="height: 32px; border-radius: 50%;" />
         <span class="title">甲丁智能体</span>
       </div>
       <div class="right-menu">

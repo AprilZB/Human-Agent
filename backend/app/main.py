@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from app.api.system import system_bp
 from app.api.production import production_bp
 
-load_dotenv()
+load_dotenv(override=True)
 
 app = Flask(__name__)
 CORS(app)
