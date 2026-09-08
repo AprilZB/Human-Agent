@@ -1,10 +1,25 @@
-<template>
+﻿<template>
   <el-container class="app-wrapper">
     <el-header class="app-header">
       <div class="logo">
         <img src="@/assets/logo/LOGO.png" alt="logo" style="height: 32px; border-radius: 50%;" />
         <span class="title">甲丁智能体</span>
       </div>
+      
+      <div class="top-menu">
+        <el-menu
+          :default-active="activeMenu"
+          mode="horizontal"
+          router
+          class="nav-menu"
+          :ellipsis="false"
+        >
+          <el-menu-item index="/dashboard">生产工作台</el-menu-item>
+          <el-menu-item index="/data">数据维护</el-menu-item>
+          <el-menu-item index="/settings">系统设置</el-menu-item>
+        </el-menu>
+      </div>
+
       <div class="right-menu">
         <el-switch
           v-model="isDark"
@@ -35,13 +50,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { ArrowDown } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
 import { mockAphrLogin } from '@/api/auth'
 
+const route = useRoute()
 const userStore = useUserStore()
 const isDark = ref(false)
+
+const activeMenu = computed(() => route.path)
 
 const toggleTheme = (val: boolean) => {
   if (val) {
@@ -56,7 +75,6 @@ const handleLogout = () => {
 }
 
 onMounted(async () => {
-  // 模拟 APHR SSO 自动登录
   if (!userStore.token) {
     const res: any = await mockAphrLogin('EMP1001')
     userStore.setToken(res.token)
@@ -86,16 +104,28 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 10px;
+  width: 200px;
 }
 .logo .title {
   font-size: 20px;
   font-weight: bold;
   color: var(--color-primary);
 }
+.top-menu {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+.nav-menu {
+  border-bottom: none;
+  height: 60px;
+}
 .right-menu {
   display: flex;
   align-items: center;
   gap: 20px;
+  width: 200px;
+  justify-content: flex-end;
 }
 .user-info {
   cursor: pointer;

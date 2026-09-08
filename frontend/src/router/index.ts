@@ -11,7 +11,19 @@ const routes: Array<RouteRecordRaw> = [
         path: 'dashboard',
         name: 'Dashboard',
         component: () => import('@/views/dashboard/index.vue'),
-        meta: { title: '车间数字化工作台' }
+        meta: { title: '生产工作台' }
+      },
+      {
+        path: 'data',
+        name: 'DataMaintenance',
+        component: () => import('@/views/data/index.vue'),
+        meta: { title: '数据维护' }
+      },
+      {
+        path: 'settings',
+        name: 'SystemSettings',
+        component: () => import('@/views/settings/index.vue'),
+        meta: { title: '系统设置' }
       }
     ]
   }
