@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <el-container class="app-wrapper">
     <el-header class="app-header">
       <div class="logo">
@@ -67,8 +67,8 @@ onMounted(async () => {
 
 <style scoped>
 .app-wrapper {
-  height: 100vh;
-  width: 100vw;
+  height: 100%;
+  width: 100%;
   display: flex;
   flex-direction: column;
 }
@@ -108,5 +108,6 @@ onMounted(async () => {
   background-color: var(--bg-base);
   padding: 20px;
   overflow-x: hidden;
+  overflow-y: auto;
 }
 </style>

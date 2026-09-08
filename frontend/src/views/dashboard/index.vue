@@ -63,7 +63,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 
@@ -92,9 +92,11 @@ const confirmAssign = (woCode: string) => {
   workOrders.value = workOrders.value.filter(wo => wo.work_order_code !== woCode)
 }
 
+let myChart: echarts.ECharts | null = null
+
 const initChart = () => {
   if (!chartRef.value) return
-  const myChart = echarts.init(chartRef.value)
+  myChart = echarts.init(chartRef.value)
   const option = {
     tooltip: { trigger: 'item' },
     legend: { top: '5%', left: 'center' },
@@ -125,9 +127,19 @@ const initChart = () => {
   myChart.setOption(option)
 }
 
+const handleResize = () => {
+  myChart?.resize()
+}
+
 onMounted(() => {
   fetchWorkOrders()
   initChart()
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
+  myChart?.dispose()
 })
 </script>
 
