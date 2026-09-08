@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="dashboard-container">
     <!-- 顶部基础信息 -->
     <el-row :gutter="20" class="mb-20">
@@ -197,7 +197,7 @@ const getEmpLabel = (empId: string) => {
 
 const fetchPendingOrders = async () => {
   try {
-    const res = await axios.get(http://localhost:8100/api/v1/prod/work-orders?date= + pendingDate.value + &status=PENDING,UNASSIGNED)
+    const res = await axios.get('http://localhost:8100/api/v1/prod/work-orders?date=' + pendingDate.value + '&status=PENDING,UNASSIGNED')
     pendingOrders.value = res.data
   } catch (error) {
     ElMessage.error('拉取待派工单失败')
@@ -207,9 +207,9 @@ const fetchPendingOrders = async () => {
 const fetchDispatchedOrders = async () => {
   try {
     const [start, end] = dispatchedDateRange.value || ['', '']
-    let url = http://localhost:8100/api/v1/prod/work-orders?status=DISPATCHED
+    let url = 'http://localhost:8100/api/v1/prod/work-orders?status=DISPATCHED'
     if (start && end) {
-      url += &start_date= + start + &end_date= + end
+      url += '&start_date=' + start + '&end_date=' + end
     }
     const res = await axios.get(url)
     dispatchedOrders.value = res.data
@@ -231,7 +231,7 @@ const openDispatchDialog = async (wo: any) => {
   aiReasons.value = {}
   
   try {
-    const res = await axios.post(http://localhost:8100/api/v1/prod/work-orders/ + wo.work_order_code + /match)
+    const res = await axios.post('http://localhost:8100/api/v1/prod/work-orders/' + wo.work_order_code + '/match')
     const assignments = res.data.assignments || []
     assignments.forEach((a: any) => {
       selectedEmployees.value.push(a.employee_id)
@@ -254,7 +254,7 @@ const confirmDispatch = async () => {
     return
   }
   try {
-    await axios.post(http://localhost:8100/api/v1/prod/work-orders/ + currentWo.value.work_order_code + /confirm-dispatch, {
+    await axios.post('http://localhost:8100/api/v1/prod/work-orders/' + currentWo.value.work_order_code + '/confirm-dispatch', {
       employees: selectedEmployees.value
     })
     ElMessage.success('派工成功！工单已流转。')
@@ -275,7 +275,7 @@ const dingtalkPush = async () => {
   try {
     const res = await axios.post('http://localhost:8100/api/v1/prod/dingtalk-push', {
       phone: '15957270693',
-      message: 【派工提醒】您被分配到了工单： + currentWo.value?.work_order_code
+      message: '【派工提醒】您被分配到了工单：' + currentWo.value?.work_order_code
     })
     ElMessage.success('钉钉消息已推送到 15957270693')
   } catch (error) {
