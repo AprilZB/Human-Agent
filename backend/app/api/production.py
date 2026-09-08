@@ -1,4 +1,4 @@
-﻿from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request
 from app.core.database import SessionLocal
 from app.models.production import BizProductionOrder, BizWorkOrder, TaskPersonnelAssignment, BaseProcess
 from app.services.dispatch_service import decompose_production_order
@@ -120,7 +120,7 @@ def confirm_dispatch(wo_code):
         if not wo:
             return jsonify({"detail": "Work order not found"}), 404
             
-        wo.status = 'DISPATCHED'
+        wo.status = 'ASSIGNED'
         
         db.query(TaskPersonnelAssignment).filter(TaskPersonnelAssignment.work_order_code == wo_code).delete()
         

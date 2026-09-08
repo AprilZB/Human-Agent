@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="dashboard-container">
     <!-- 顶部基础信息 -->
     <el-row :gutter="20" class="mb-20">
@@ -72,7 +72,7 @@
               <template #default="scope">
                 <el-tooltip v-for="emp in scope.row.assignments" :key="emp.employee_id" :content="emp.reason" placement="top">
                   <el-tag size="small" type="warning" class="mr-10 mb-10">
-                    {{ getEmpLabel(emp.employee_id) }} (AI推)
+                    {{ getEmpLabel(emp.employee_id) }}
                   </el-tag>
                 </el-tooltip>
                 <span v-if="!scope.row.assignments || scope.row.assignments.length === 0" class="text-muted">暂无预案</span>
@@ -117,7 +117,7 @@
               </template>
             </el-table-column>
             <el-table-column label="状态" width="80" align="center">
-              <template #default="scope">
+              <template #default>
                 <el-tag type="success">已派发</el-tag>
               </template>
             </el-table-column>
@@ -221,7 +221,7 @@ const fetchPendingOrders = async () => {
 const fetchDispatchedOrders = async () => {
   try {
     const [start, end] = dispatchedDateRange.value || ['', '']
-    let url = 'http://localhost:8100/api/v1/prod/work-orders?status=DISPATCHED'
+    let url = 'http://localhost:8100/api/v1/prod/work-orders?status=ASSIGNED'
     if (start && end) {
       url += '&start_date=' + start + '&end_date=' + end
     }
