@@ -1,0 +1,43 @@
+:root {
+  /* 主题一：极简科技风 (Clean Tech / Light) - 默认 */
+  --color-primary: #1F64FF;
+  --color-primary-light: #E8F3FF;
+  --bg-base: #F4F7FB;
+  --bg-card: #FFFFFF;
+  --text-primary: #1D2129;
+  --text-regular: #4E5969;
+  --text-secondary: #86909C;
+  --color-success: #00B42A;
+  --color-warning: #FF7D00;
+  --color-danger: #F53F3F;
+  --border-color: #E5E6EB;
+  
+  --border-radius-base: 8px;
+  --box-shadow-card: 0 4px 20px rgba(31, 100, 255, 0.05);
+}
+
+/* 主题二：深邃暗黑风 (Cyber Tech / Dark) */
+html.dark {
+  --color-primary: #3C7EFF;
+  --color-primary-light: #172A4D;
+  --bg-base: #141414;
+  --bg-card: #1F1F1F;
+  --text-primary: #E5E6EB;
+  --text-regular: #C9CDD4;
+  --text-secondary: #86909C;
+  --color-success: #27C346;
+  --color-warning: #FF9A2E;
+  --color-danger: #F76560;
+  --border-color: #333333;
+  
+  --box-shadow-card: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+body {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: 'PingFang SC', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  transition: background-color 0.3s, color 0.3s;
+}
