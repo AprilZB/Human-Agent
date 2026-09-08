@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="dashboard-container">
     <el-row :gutter="20">
       <!-- 待处理任务区 -->
@@ -88,7 +88,7 @@ const fetchWorkOrders = () => {
 }
 
 const confirmAssign = (woCode: string) => {
-  ElMessage.success(工单 \ 已确认指派！)
+  ElMessage.success(`工单 ${woCode} 已确认指派！`)
   workOrders.value = workOrders.value.filter(wo => wo.work_order_code !== woCode)
 }
 

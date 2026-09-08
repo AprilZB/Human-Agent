@@ -1,4 +1,4 @@
-﻿from pydantic import BaseModel
+from pydantic import BaseModel
 from typing import Optional
 
 class SysConfigBase(BaseModel):
@@ -10,4 +10,4 @@ class SysConfigResponse(SysConfigBase):
     id: int
 
     class Config:
-        from_attributes = True
+        orm_mode = True

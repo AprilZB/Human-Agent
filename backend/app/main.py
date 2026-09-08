@@ -1,30 +1,23 @@
-﻿import os
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+import os
+from flask import Flask, jsonify, request
+from flask_cors import CORS
 from dotenv import load_dotenv
-import uvicorn
 
-from app.api import system, production
+from app.api.system import system_bp
+from app.api.production import production_bp
 
 load_dotenv()
 
-app = FastAPI(title="Human Agent API", version="1.0.0")
+app = Flask(__name__)
+CORS(app)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app.register_blueprint(system_bp, url_prefix='/api/v1')
+app.register_blueprint(production_bp, url_prefix='/api/v1/prod')
 
-app.include_router(system.router, prefix="/api/v1")
-app.include_router(production.router, prefix="/api/v1/prod")
-
-@app.get("/")
+@app.route("/")
 def read_root():
-    return {"message": "Welcome to Human Agent API"}
+    return jsonify({"message": "Welcome to Human Agent API"})
 
 if __name__ == "__main__":
     port = int(os.getenv("API_PORT", 8100))
-    uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=True)
+    app.run(host="0.0.0.0", port=port, debug=True)

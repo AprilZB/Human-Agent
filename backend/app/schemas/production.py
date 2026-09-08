@@ -1,4 +1,4 @@
-﻿from pydantic import BaseModel
+from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 
@@ -13,4 +13,4 @@ class ProductionOrderCreate(BaseModel):
 class ProductionOrderResponse(ProductionOrderCreate):
     status: str
     class Config:
-        from_attributes = True
+        orm_mode = True

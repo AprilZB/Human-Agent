@@ -1,16 +1,52 @@
-# start-service.ps1
-Write-Host "==============================================" -ForegroundColor Cyan
-Write-Host "   甲丁智能体 (Human-Agent) 启动脚本" -ForegroundColor Green
-Write-Host "==============================================" -ForegroundColor Cyan
+# Human-Agent Services Startup Script (start-service.ps1)
 
-# 启动后端服务
-Write-Host "[1/2] 正在独立窗口中启动 FastAPI 后端服务 (端口 8100)..." -ForegroundColor Yellow
-Start-Process powershell -ArgumentList "-NoExit -Command `"cd backend; if (!(Test-Path venv)) { Write-Host 'Creating virtual environment...'; python -m venv venv }; .\venv\Scripts\activate; Write-Host 'Installing requirements...'; pip install -r requirements.txt; Write-Host 'Starting server...'; python -m app.main`"" -WindowStyle Normal
+$ErrorActionPreference = "Continue"
 
-# 启动前端服务
-Write-Host "[2/2] 正在独立窗口中启动 Vue3 前端服务 (端口 8101)..." -ForegroundColor Yellow
-Start-Process powershell -ArgumentList "-NoExit -Command `"cd frontend; Write-Host 'Installing NPM packages...'; npm install; Write-Host 'Starting dev server...'; npm run dev`"" -WindowStyle Normal
+$PSScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Definition
 
-Write-Host "启动指令已下发！请在弹出的新窗口中查看运行日志。" -ForegroundColor Green
-Write-Host "后端 API 文档: http://localhost:8100/docs" -ForegroundColor Cyan
-Write-Host "前端访问地址: http://localhost:8101" -ForegroundColor Cyan
+Write-Host "==========================================================" -ForegroundColor Cyan
+Write-Host "       Starting Human-Agent System" -ForegroundColor Cyan
+Write-Host "==========================================================" -ForegroundColor Cyan
+Write-Host ""
+
+$BackendPort = 8100
+$FrontendPort = 8101
+
+$BackendOccupied = $null
+try { $BackendOccupied = Get-NetTCPConnection -LocalPort $BackendPort -State Listen -ErrorAction Stop } catch { }
+
+$FrontendOccupied = $null
+try { $FrontendOccupied = Get-NetTCPConnection -LocalPort $FrontendPort -State Listen -ErrorAction Stop } catch { }
+
+if ($BackendOccupied) {
+    Write-Warning "Port $BackendPort is already in use!"
+} else {
+    Write-Host "=> Starting Backend Service on port $BackendPort..." -ForegroundColor Green
+    $BackendArgs = @(
+        "-NoProfile",
+        "-NoExit",
+        "-Command",
+        "cd `"$PSScriptRoot\backend`"; & `"$PSScriptRoot\backend\venv\Scripts\python.exe`" -m app.main"
+    )
+    Start-Process "powershell" -ArgumentList $BackendArgs -WindowStyle Normal
+}
+
+Start-Sleep -Seconds 1
+
+if ($FrontendOccupied) {
+    Write-Warning "Port $FrontendPort is already in use!"
+} else {
+    Write-Host "=> Starting Frontend Service on port $FrontendPort..." -ForegroundColor Green
+    $FrontendArgs = @(
+        "-NoProfile",
+        "-NoExit",
+        "-Command",
+        "cd `"$PSScriptRoot\frontend`"; npm run dev"
+    )
+    Start-Process "powershell" -ArgumentList $FrontendArgs -WindowStyle Normal
+}
+
+Write-Host ""
+Write-Host "=> Startup processes initiated!" -ForegroundColor Cyan
+Write-Host "=> [This window will close in 5 seconds]" -ForegroundColor DarkGray
+Start-Sleep -Seconds 5

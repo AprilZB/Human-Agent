@@ -1,12 +1,14 @@
-﻿from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
-from app.core.database import get_db
+from flask import Blueprint, jsonify
+from app.core.database import SessionLocal
 from app.models.system import SysConfig
-from app.schemas.system import SysConfigResponse
-from typing import List
 
-router = APIRouter()
+system_bp = Blueprint('system', __name__)
 
-@router.get("/configs", response_model=List[SysConfigResponse])
-def get_configs(db: Session = Depends(get_db)):
-    return db.query(SysConfig).all()
+@system_bp.route("/configs", methods=["GET"])
+def get_configs():
+    db = SessionLocal()
+    try:
+        configs = db.query(SysConfig).all()
+        return jsonify([{"id": c.id, "config_key": c.config_key, "config_value": c.config_value, "description": c.description} for c in configs])
+    finally:
+        db.close()
