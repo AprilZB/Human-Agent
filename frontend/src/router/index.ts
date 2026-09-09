@@ -1,4 +1,4 @@
-﻿import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 import { useUserStore } from '@/store/user'
 import { ElMessage } from 'element-plus'
@@ -40,8 +40,13 @@ router.beforeEach((to, from, next) => {
   const userStore = useUserStore()
   const role = userStore.userInfo?.role
   
+  if (!role) {
+    // 还没登录（刷新页面状态丢失），放行让他进去，Layout 里的 onMounted 会进行 mock 登录并重定向
+    return next()
+  }
+  
   if (to.meta.roles && Array.isArray(to.meta.roles)) {
-    if (!role || !to.meta.roles.includes(role)) {
+    if (!to.meta.roles.includes(role)) {
       ElMessage.error('无权访问该页面')
       // 重定向到该角色的首页
       if (role === 'TEAM_LEADER') return next('/dashboard')
