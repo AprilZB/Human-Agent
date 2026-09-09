@@ -174,18 +174,31 @@ def export_data(tab_name):
         return jsonify({"error": "Invalid tab"}), 400
         
     model = TAB_MODEL_MAP[tab_name]
+    is_template = request.args.get('template') == '1'
+    
     db = SessionLocal()
     try:
-        items = db.query(model).all()
-        data = [clean_dict(item.__dict__) for item in items]
+        if is_template:
+            data = []
+        else:
+            items = db.query(model).all()
+            data = [clean_dict(item.__dict__) for item in items]
         
-        df = pd.DataFrame(data)
+        if not data:
+            cols = [c.name for c in model.__table__.columns if c.name not in ['id', 'created_at']]
+            df = pd.DataFrame(columns=cols)
+        else:
+            # Reorder columns to ensure id and created_at are at the end or removed if not wanted.
+            # But here we just use pandas defaults for data
+            df = pd.DataFrame(data)
+            
         out = io.BytesIO()
         with pd.ExcelWriter(out, engine='openpyxl') as writer:
             df.to_excel(writer, index=False)
             
         out.seek(0)
-        return send_file(out, download_name=f"{tab_name}.xlsx", as_attachment=True)
+        filename = f"{tab_name}_template.xlsx" if is_template else f"{tab_name}.xlsx"
+        return send_file(out, download_name=filename, as_attachment=True)
     finally:
         db.close()
 
