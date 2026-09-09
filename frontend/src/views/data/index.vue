@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="data-container">
     <el-card shadow="hover" class="data-card">
       <el-tabs v-model="activeTab" @tab-change="handleTabChange">
@@ -58,8 +58,8 @@
           </div>
         </el-tab-pane>
         
-        <!-- 确认报工档案 -->
-        <el-tab-pane label="确认报工档案" name="confirmations">
+        <!-- 确认报工记录 -->
+        <el-tab-pane label="确认报工记录" name="confirmations">
           <div class="filter-bar">
             <el-input v-model="filters.confirmations" placeholder="订单号/物料" style="width: 200px" class="mr-10" />
             <el-button type="primary" @click="fetchData">查询</el-button>
