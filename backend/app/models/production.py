@@ -60,3 +60,19 @@ class BizProductionConfirmation(Base):
     reversed_flag = Column(Enum('Y', 'N'), default='N')
     created_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"))
 
+
+
+from sqlalchemy import DATE, Boolean
+
+class BizEmployeeAttendance(Base):
+    __tablename__ = 'biz_employee_attendance'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    attendance_date = Column(DATE, nullable=False)
+    employee_id = Column(String(50), nullable=False)
+    shift_code = Column(String(50))
+    is_holiday = Column(Boolean, default=False)
+    actual_punch_in = Column(DATETIME)
+    actual_punch_out = Column(DATETIME)
+    attendance_status = Column(String(50))
+    calculated_overtime = Column(DECIMAL(10, 2), default=0)
+    created_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"))

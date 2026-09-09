@@ -151,7 +151,8 @@ TAB_MODEL_MAP = {
     "routings": md.BaseRouting,
     "processes": prod.BaseProcess,
     "boms": md.BaseBom,
-    "confirmations": prod.BizProductionConfirmation
+    "confirmations": prod.BizProductionConfirmation,
+    "attendances": prod.BizEmployeeAttendance
 }
 
 @data_bp.route("/confirmations", methods=["GET"])
@@ -234,3 +235,18 @@ def import_data(tab_name):
             db.close()
     except Exception as e:
         return jsonify({"error": str(e)}), 400
+
+
+@data_bp.route("/attendances", methods=["GET"])
+def get_attendances():
+    db = SessionLocal()
+    try:
+        q = db.query(prod.BizEmployeeAttendance)
+        keyword = request.args.get('keyword', '')
+        if keyword:
+            q = q.filter(prod.BizEmployeeAttendance.employee_id.like(f"%{keyword}%"))
+        res = paginate(q)
+        res['records'] = [clean_dict(r) for r in res['records']]
+        return jsonify(res)
+    finally:
+        db.close()
