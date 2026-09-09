@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="settings-container">
     <el-card shadow="hover" header="系统参数设置">
       <el-table :data="configs" v-loading="loading" style="width: 100%" border stripe>
@@ -70,7 +70,7 @@ const editConfig = (row: any) => {
 
 const saveConfig = async (row: any) => {
   try {
-    await axios.put(http://localhost:8100/api/v1/configs/ + row.config_key, {
+    await axios.put('http://localhost:8100/api/v1/configs/' + row.config_key, {
       config_value: row.editValue
     })
     ElMessage.success('保存成功')
