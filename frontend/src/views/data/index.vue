@@ -1,55 +1,180 @@
 ﻿<template>
   <div class="data-container">
-    <el-card shadow="hover">
-      <el-tabs v-model="activeTab">
+    <el-card shadow="hover" class="data-card">
+      <el-tabs v-model="activeTab" @tab-change="handleTabChange">
         
+        <!-- 物料档案 -->
         <el-tab-pane label="物料档案" name="materials">
-          <div class="header-actions">
-            <el-button type="primary">新增物料</el-button>
+          <div class="filter-bar">
+            <el-input v-model="filters.materials" placeholder="物料编码/描述" style="width: 200px" class="mr-10" />
+            <el-button type="primary" @click="fetchData">查询</el-button>
+            <el-button type="success" plain class="ml-auto">从SAP导入</el-button>
+            <el-button type="info" plain>导出</el-button>
           </div>
-          <el-table :data="materials" border stripe>
-            <el-table-column prop="material_code" label="物料代码" width="150" />
-            <el-table-column prop="material_name" label="物料名称" />
-            <el-table-column prop="category" label="分类" width="120" />
-            <el-table-column label="操作" width="120" align="center">
-              <template #default>
-                <el-button type="primary" link>编辑</el-button>
-              </template>
+          <el-table :data="tableData.materials" v-loading="loading" border stripe height="calc(100vh - 300px)">
+            <el-table-column prop="material_code" label="物料编码" width="150" fixed />
+            <el-table-column prop="material_desc" label="物料描述" width="200" fixed />
+            <el-table-column prop="material_group_code" label="物料组" width="120" />
+            <el-table-column prop="plant_status" label="特定工厂状态" width="120" />
+            <el-table-column prop="base_uom" label="基本计量单位" width="120" />
+            <el-table-column prop="valid_from" label="有效起始期" width="120" />
+            <el-table-column prop="max_storage_period" label="最大存储期间" width="120" />
+            <el-table-column prop="time_unit" label="时间单位" width="100" />
+            <el-table-column prop="min_shelf_life" label="最小剩余货架寿命" width="140" />
+            <el-table-column prop="total_shelf_life" label="总货架寿命" width="120" />
+            <el-table-column prop="inspection_required" label="是否需检验" width="100">
+              <template #default="scope">{{ scope.row.inspection_required ? '是' : '否' }}</template>
             </el-table-column>
+            <el-table-column prop="safety_stock" label="安全库存" width="100" />
+            <el-table-column prop="default_storage_loc" label="默认地点" width="100" />
           </el-table>
+          <div class="pagination-container">
+            <el-pagination 
+              v-model:current-page="pages.materials" 
+              :total="totals.materials" 
+              layout="total, prev, pager, next" 
+              @current-change="fetchData" />
+          </div>
         </el-tab-pane>
 
-        <el-tab-pane label="工序字典" name="processes">
-          <div class="header-actions">
-            <el-button type="primary">新增工序</el-button>
+        <!-- 生产订单记录 -->
+        <el-tab-pane label="生产订单记录" name="production-orders">
+          <div class="filter-bar">
+            <el-input v-model="filters['production-orders']" placeholder="单号/物料" style="width: 200px" class="mr-10" />
+            <el-button type="primary" @click="fetchData">查询</el-button>
+            <el-button type="success" plain class="ml-auto">导入</el-button>
+            <el-button type="info" plain>导出</el-button>
           </div>
-          <el-table :data="processes" border stripe>
+          <el-table :data="tableData['production-orders']" v-loading="loading" border stripe height="calc(100vh - 300px)">
+            <el-table-column prop="order_code" label="订单编号" width="180" />
+            <el-table-column prop="material_code" label="物料编码" width="150" />
+            <el-table-column prop="target_quantity" label="目标数量" width="120" />
+            <el-table-column prop="plan_start_time" label="计划开始" width="160" />
+            <el-table-column prop="plan_end_time" label="计划结束" width="160" />
+            <el-table-column prop="status" label="状态" width="120" />
+          </el-table>
+          <div class="pagination-container">
+            <el-pagination v-model:current-page="pages['production-orders']" :total="totals['production-orders']" layout="total, prev, pager, next" @current-change="fetchData" />
+          </div>
+        </el-tab-pane>
+
+        <!-- 员工档案 -->
+        <el-tab-pane label="员工档案" name="employees">
+          <div class="filter-bar">
+            <el-input v-model="filters.employees" placeholder="工号/姓名" style="width: 200px" class="mr-10" />
+            <el-button type="primary" @click="fetchData">查询</el-button>
+            <el-button type="success" plain class="ml-auto">从APHR同步</el-button>
+          </div>
+          <el-table :data="tableData.employees" v-loading="loading" border stripe height="calc(100vh - 300px)">
+            <el-table-column prop="employee_id" label="工号" width="150" />
+            <el-table-column prop="name" label="姓名" width="150" />
+            <el-table-column prop="workshop_code" label="车间" width="150" />
+            <el-table-column prop="health_cert_status" label="健康证状态/有效期" width="180" />
+            <el-table-column prop="work_cert_status" label="上岗证状态/有效期" width="180" />
+            <el-table-column prop="skills" label="技能矩阵" />
+          </el-table>
+          <div class="pagination-container">
+            <el-pagination v-model:current-page="pages.employees" :total="totals.employees" layout="total, prev, pager, next" @current-change="fetchData" />
+          </div>
+        </el-tab-pane>
+
+        <!-- 车间档案 -->
+        <el-tab-pane label="车间档案" name="workshops">
+          <div class="filter-bar">
+            <el-button type="primary" @click="fetchData">刷新</el-button>
+            <el-button type="success" plain class="ml-auto">从APHR同步</el-button>
+          </div>
+          <el-table :data="tableData.workshops" v-loading="loading" border stripe height="calc(100vh - 300px)">
+            <el-table-column prop="workshop_code" label="车间编码" width="150" />
+            <el-table-column prop="workshop_name" label="车间名称" width="200" />
+            <el-table-column prop="sap_work_center_code" label="SAP工作中心对照" />
+            <el-table-column prop="manager_id" label="负责人ID" width="150" />
+          </el-table>
+          <div class="pagination-container">
+            <el-pagination v-model:current-page="pages.workshops" :total="totals.workshops" layout="total, prev, pager, next" @current-change="fetchData" />
+          </div>
+        </el-tab-pane>
+
+        <!-- 不良原因档案 -->
+        <el-tab-pane label="不良原因档案" name="defect-reasons">
+          <div class="filter-bar">
+            <el-button type="primary" @click="fetchData">刷新</el-button>
+          </div>
+          <el-table :data="tableData['defect-reasons']" v-loading="loading" border stripe height="calc(100vh - 300px)">
+            <el-table-column prop="defect_code" label="本地不良代码" width="150" />
+            <el-table-column prop="sap_defect_code" label="SAP不良代码" width="150" />
+            <el-table-column prop="defect_name" label="不良名称" width="200" />
+            <el-table-column prop="description" label="描述" />
+          </el-table>
+          <div class="pagination-container">
+            <el-pagination v-model:current-page="pages['defect-reasons']" :total="totals['defect-reasons']" layout="total, prev, pager, next" @current-change="fetchData" />
+          </div>
+        </el-tab-pane>
+
+        <!-- 物料组档案 -->
+        <el-tab-pane label="物料组档案" name="material-groups">
+          <div class="filter-bar">
+            <el-button type="primary" @click="fetchData">刷新</el-button>
+          </div>
+          <el-table :data="tableData['material-groups']" v-loading="loading" border stripe height="calc(100vh - 300px)">
+            <el-table-column prop="group_code" label="本地物料组编码" width="150" />
+            <el-table-column prop="sap_group_code" label="SAP对照码" width="150" />
+            <el-table-column prop="group_name" label="物料组名称" />
+          </el-table>
+          <div class="pagination-container">
+            <el-pagination v-model:current-page="pages['material-groups']" :total="totals['material-groups']" layout="total, prev, pager, next" @current-change="fetchData" />
+          </div>
+        </el-tab-pane>
+
+        <!-- 工艺路线档案 -->
+        <el-tab-pane label="工艺路线档案" name="routings">
+          <div class="filter-bar">
+            <el-button type="primary" @click="fetchData">刷新</el-button>
+          </div>
+          <el-table :data="tableData.routings" v-loading="loading" border stripe height="calc(100vh - 300px)">
+            <el-table-column prop="routing_code" label="路线编码" width="150" />
+            <el-table-column prop="sap_routing_code" label="SAP对照码" width="150" />
+            <el-table-column prop="routing_name" label="路线名称" width="200" />
+            <el-table-column prop="material_code" label="关联物料" width="150" />
+            <el-table-column prop="version" label="版本" width="100" />
+          </el-table>
+          <div class="pagination-container">
+            <el-pagination v-model:current-page="pages.routings" :total="totals.routings" layout="total, prev, pager, next" @current-change="fetchData" />
+          </div>
+        </el-tab-pane>
+
+        <!-- 工序档案 -->
+        <el-tab-pane label="工序档案" name="processes">
+          <div class="filter-bar">
+            <el-button type="primary" @click="fetchData">刷新</el-button>
+          </div>
+          <el-table :data="tableData.processes" v-loading="loading" border stripe height="calc(100vh - 300px)">
             <el-table-column prop="process_code" label="工序代码" width="150" />
-            <el-table-column prop="process_name" label="工序名称" />
+            <el-table-column prop="process_name" label="工序名称" width="200" />
             <el-table-column prop="standard_time_sec" label="标准工时(秒)" width="150" />
-            <el-table-column label="操作" width="120" align="center">
-              <template #default>
-                <el-button type="primary" link>编辑</el-button>
-              </template>
-            </el-table-column>
+            <el-table-column prop="required_skills" label="所需技能" />
           </el-table>
+          <div class="pagination-container">
+            <el-pagination v-model:current-page="pages.processes" :total="totals.processes" layout="total, prev, pager, next" @current-change="fetchData" />
+          </div>
         </el-tab-pane>
 
-        <el-tab-pane label="班组人员" name="employees">
-          <div class="header-actions">
-            <el-button type="primary">新增人员</el-button>
+        <!-- BOM档案 -->
+        <el-tab-pane label="BOM档案" name="boms">
+          <div class="filter-bar">
+            <el-button type="primary" @click="fetchData">刷新</el-button>
           </div>
-          <el-table :data="employees" border stripe>
-            <el-table-column prop="employee_id" label="工号" width="120" />
-            <el-table-column prop="name" label="姓名" width="120" />
-            <el-table-column prop="team_code" label="所属班组" width="120" />
-            <el-table-column prop="skills" label="技能资质" />
-            <el-table-column label="操作" width="120" align="center">
-              <template #default>
-                <el-button type="primary" link>编辑</el-button>
-              </template>
-            </el-table-column>
+          <el-table :data="tableData.boms" v-loading="loading" border stripe height="calc(100vh - 300px)">
+            <el-table-column prop="bom_code" label="BOM编码" width="150" />
+            <el-table-column prop="product_code" label="父件编码" width="150" />
+            <el-table-column prop="component_code" label="子件编码" width="150" />
+            <el-table-column prop="quantity" label="用量" width="100" />
+            <el-table-column prop="alt_group" label="替代物料同行号" width="150" />
+            <el-table-column prop="operation_code" label="绑定工序" width="150" />
           </el-table>
+          <div class="pagination-container">
+            <el-pagination v-model:current-page="pages.boms" :total="totals.boms" layout="total, prev, pager, next" @current-change="fetchData" />
+          </div>
         </el-tab-pane>
 
       </el-tabs>
@@ -58,36 +183,90 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
+import axios from 'axios'
+import { ElMessage } from 'element-plus'
 
 const activeTab = ref('materials')
+const loading = ref(false)
 
-// TODO: 从后端接口获取真实数据，这里先放一些 Mock 占位
-const materials = ref([
-  { material_code: 'MAT-001', material_name: '钣金外壳A型', category: '半成品' },
-  { material_code: 'MAT-OLD', material_name: '通用支架组件', category: '原料' }
-])
+const tabs = [
+  'materials', 'production-orders', 'employees', 'workshops', 
+  'defect-reasons', 'material-groups', 'routings', 'processes', 'boms'
+]
 
-const processes = ref([
-  { process_code: 'P-STAMP-01', process_name: '冲压工序A', standard_time_sec: 300 },
-  { process_code: 'P-WELD-01', process_name: '焊接工序B', standard_time_sec: 400 }
-])
+const tableData = reactive<Record<string, any[]>>({})
+const pages = reactive<Record<string, number>>({})
+const totals = reactive<Record<string, number>>({})
+const filters = reactive<Record<string, string>>({})
 
-const employees = ref([
-  { employee_id: 'EMP001', name: '张三', team_code: 'TEAM-A', skills: '激光切割,焊接' },
-  { employee_id: 'EMP002', name: '李四', team_code: 'TEAM-A', skills: '打磨' },
-  { employee_id: 'EMP003', name: '王五', team_code: 'TEAM-A', skills: '激光切割' }
-])
+tabs.forEach(t => {
+  tableData[t] = []
+  pages[t] = 1
+  totals[t] = 0
+  filters[t] = ''
+})
+
+const fetchData = async () => {
+  loading.value = true
+  const tab = activeTab.value
+  try {
+    const res = await axios.get(http://localhost:8100/api/v1/data/ + tab, {
+      params: {
+        page: pages[tab],
+        size: 10,
+        keyword: filters[tab] || ''
+      }
+    })
+    tableData[tab] = res.data.records
+    totals[tab] = res.data.total
+  } catch (error) {
+    ElMessage.error('拉取数据失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleTabChange = () => {
+  fetchData()
+}
+
+onMounted(() => {
+  fetchData()
+})
 </script>
 
 <style scoped>
 .data-container {
-  max-width: 1200px;
-  margin: 0 auto;
+  height: 100%;
 }
-.header-actions {
+.data-card {
+  height: 100%;
+}
+.filter-bar {
   margin-bottom: 20px;
   display: flex;
+  align-items: center;
+}
+.mr-10 { margin-right: 10px; }
+.ml-auto { margin-left: auto; }
+.pagination-container {
+  margin-top: 20px;
+  display: flex;
   justify-content: flex-end;
+}
+:deep(.el-card__body) {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+:deep(.el-tabs) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+:deep(.el-tabs__content) {
+  flex: 1;
+  overflow: auto;
 }
 </style>

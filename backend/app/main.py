@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 
 from app.api.system import system_bp
 from app.api.production import production_bp
+from app.api.data import data_bp
 
 load_dotenv(override=True)
 
@@ -13,6 +14,7 @@ CORS(app)
 
 app.register_blueprint(system_bp, url_prefix='/api/v1')
 app.register_blueprint(production_bp, url_prefix='/api/v1/prod')
+app.register_blueprint(data_bp, url_prefix='/api/v1/data')
 
 @app.route("/")
 def read_root():
