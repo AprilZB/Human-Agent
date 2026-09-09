@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="data-container">
     <el-card shadow="hover" class="data-card">
       <el-tabs v-model="activeTab" @tab-change="handleTabChange">
@@ -8,8 +8,10 @@
           <div class="filter-bar">
             <el-input v-model="filters.materials" placeholder="物料编码/描述" style="width: 200px" class="mr-10" />
             <el-button type="primary" @click="fetchData">查询</el-button>
-            <el-button type="success" plain class="ml-auto">从SAP导入</el-button>
-            <el-button type="info" plain>导出</el-button>
+            <el-upload :action="'http://localhost:8100/api/v1/data/materials/import'" :show-file-list="false" :on-success="handleImportSuccess" :on-error="handleImportError" class="ml-auto mr-10">
+              <el-button type="success" plain>Excel 导入</el-button>
+            </el-upload>
+            <el-button type="info" plain @click="handleExport('materials')">Excel 导出</el-button>
           </div>
           <el-table :data="tableData.materials" v-loading="loading" border stripe height="calc(100vh - 300px)">
             <el-table-column prop="material_code" label="物料编码" width="150" fixed />
@@ -29,11 +31,7 @@
             <el-table-column prop="default_storage_loc" label="默认地点" width="100" />
           </el-table>
           <div class="pagination-container">
-            <el-pagination 
-              v-model:current-page="pages.materials" 
-              :total="totals.materials" 
-              layout="total, prev, pager, next" 
-              @current-change="fetchData" />
+            <el-pagination v-model:current-page="pages.materials" :total="totals.materials" layout="total, prev, pager, next" @current-change="fetchData" />
           </div>
         </el-tab-pane>
 
@@ -42,8 +40,10 @@
           <div class="filter-bar">
             <el-input v-model="filters['production-orders']" placeholder="单号/物料" style="width: 200px" class="mr-10" />
             <el-button type="primary" @click="fetchData">查询</el-button>
-            <el-button type="success" plain class="ml-auto">导入</el-button>
-            <el-button type="info" plain>导出</el-button>
+            <el-upload :action="'http://localhost:8100/api/v1/data/production-orders/import'" :show-file-list="false" :on-success="handleImportSuccess" :on-error="handleImportError" class="ml-auto mr-10">
+              <el-button type="success" plain>Excel 导入</el-button>
+            </el-upload>
+            <el-button type="info" plain @click="handleExport('production-orders')">Excel 导出</el-button>
           </div>
           <el-table :data="tableData['production-orders']" v-loading="loading" border stripe height="calc(100vh - 300px)">
             <el-table-column prop="order_code" label="订单编号" width="180" />
@@ -57,13 +57,45 @@
             <el-pagination v-model:current-page="pages['production-orders']" :total="totals['production-orders']" layout="total, prev, pager, next" @current-change="fetchData" />
           </div>
         </el-tab-pane>
+        
+        <!-- 确认报工档案 -->
+        <el-tab-pane label="确认报工档案" name="confirmations">
+          <div class="filter-bar">
+            <el-input v-model="filters.confirmations" placeholder="订单号/物料" style="width: 200px" class="mr-10" />
+            <el-button type="primary" @click="fetchData">查询</el-button>
+            <el-upload :action="'http://localhost:8100/api/v1/data/confirmations/import'" :show-file-list="false" :on-success="handleImportSuccess" :on-error="handleImportError" class="ml-auto mr-10">
+              <el-button type="success" plain>Excel 导入</el-button>
+            </el-upload>
+            <el-button type="info" plain @click="handleExport('confirmations')">Excel 导出</el-button>
+          </div>
+          <el-table :data="tableData.confirmations" v-loading="loading" border stripe height="calc(100vh - 300px)">
+            <el-table-column prop="id" label="ID" width="80" fixed />
+            <el-table-column prop="order_code" label="生产订单号" width="150" fixed />
+            <el-table-column prop="material_code" label="物料编码" width="120" />
+            <el-table-column prop="work_center_code" label="工作中心" width="120" />
+            <el-table-column prop="batch_no" label="批次号" width="120" />
+            <el-table-column prop="yield_quantity" label="产量" width="100" />
+            <el-table-column prop="scrap_quantity" label="报废数量" width="100" />
+            <el-table-column prop="confirmation_no" label="确认单号" width="120" />
+            <el-table-column prop="plant" label="工厂" width="100" />
+            <el-table-column prop="exec_datetime" label="执行时间" width="160" />
+            <el-table-column prop="cancel_flag" label="取消标志" width="100" />
+            <el-table-column prop="reversed_flag" label="冲销标志" width="100" />
+          </el-table>
+          <div class="pagination-container">
+            <el-pagination v-model:current-page="pages.confirmations" :total="totals.confirmations" layout="total, prev, pager, next" @current-change="fetchData" />
+          </div>
+        </el-tab-pane>
 
         <!-- 员工档案 -->
         <el-tab-pane label="员工档案" name="employees">
           <div class="filter-bar">
             <el-input v-model="filters.employees" placeholder="工号/姓名" style="width: 200px" class="mr-10" />
             <el-button type="primary" @click="fetchData">查询</el-button>
-            <el-button type="success" plain class="ml-auto">从APHR同步</el-button>
+            <el-upload :action="'http://localhost:8100/api/v1/data/employees/import'" :show-file-list="false" :on-success="handleImportSuccess" :on-error="handleImportError" class="ml-auto mr-10">
+              <el-button type="success" plain>Excel 导入</el-button>
+            </el-upload>
+            <el-button type="info" plain @click="handleExport('employees')">Excel 导出</el-button>
           </div>
           <el-table :data="tableData.employees" v-loading="loading" border stripe height="calc(100vh - 300px)">
             <el-table-column prop="employee_id" label="工号" width="150" />
@@ -82,7 +114,10 @@
         <el-tab-pane label="车间档案" name="workshops">
           <div class="filter-bar">
             <el-button type="primary" @click="fetchData">刷新</el-button>
-            <el-button type="success" plain class="ml-auto">从APHR同步</el-button>
+            <el-upload :action="'http://localhost:8100/api/v1/data/workshops/import'" :show-file-list="false" :on-success="handleImportSuccess" :on-error="handleImportError" class="ml-auto mr-10">
+              <el-button type="success" plain>Excel 导入</el-button>
+            </el-upload>
+            <el-button type="info" plain @click="handleExport('workshops')">Excel 导出</el-button>
           </div>
           <el-table :data="tableData.workshops" v-loading="loading" border stripe height="calc(100vh - 300px)">
             <el-table-column prop="workshop_code" label="车间编码" width="150" />
@@ -99,6 +134,10 @@
         <el-tab-pane label="不良原因档案" name="defect-reasons">
           <div class="filter-bar">
             <el-button type="primary" @click="fetchData">刷新</el-button>
+            <el-upload :action="'http://localhost:8100/api/v1/data/defect-reasons/import'" :show-file-list="false" :on-success="handleImportSuccess" :on-error="handleImportError" class="ml-auto mr-10">
+              <el-button type="success" plain>Excel 导入</el-button>
+            </el-upload>
+            <el-button type="info" plain @click="handleExport('defect-reasons')">Excel 导出</el-button>
           </div>
           <el-table :data="tableData['defect-reasons']" v-loading="loading" border stripe height="calc(100vh - 300px)">
             <el-table-column prop="defect_code" label="本地不良代码" width="150" />
@@ -115,6 +154,10 @@
         <el-tab-pane label="物料组档案" name="material-groups">
           <div class="filter-bar">
             <el-button type="primary" @click="fetchData">刷新</el-button>
+            <el-upload :action="'http://localhost:8100/api/v1/data/material-groups/import'" :show-file-list="false" :on-success="handleImportSuccess" :on-error="handleImportError" class="ml-auto mr-10">
+              <el-button type="success" plain>Excel 导入</el-button>
+            </el-upload>
+            <el-button type="info" plain @click="handleExport('material-groups')">Excel 导出</el-button>
           </div>
           <el-table :data="tableData['material-groups']" v-loading="loading" border stripe height="calc(100vh - 300px)">
             <el-table-column prop="group_code" label="本地物料组编码" width="150" />
@@ -130,6 +173,10 @@
         <el-tab-pane label="工艺路线档案" name="routings">
           <div class="filter-bar">
             <el-button type="primary" @click="fetchData">刷新</el-button>
+            <el-upload :action="'http://localhost:8100/api/v1/data/routings/import'" :show-file-list="false" :on-success="handleImportSuccess" :on-error="handleImportError" class="ml-auto mr-10">
+              <el-button type="success" plain>Excel 导入</el-button>
+            </el-upload>
+            <el-button type="info" plain @click="handleExport('routings')">Excel 导出</el-button>
           </div>
           <el-table :data="tableData.routings" v-loading="loading" border stripe height="calc(100vh - 300px)">
             <el-table-column prop="routing_code" label="路线编码" width="150" />
@@ -147,6 +194,10 @@
         <el-tab-pane label="工序档案" name="processes">
           <div class="filter-bar">
             <el-button type="primary" @click="fetchData">刷新</el-button>
+            <el-upload :action="'http://localhost:8100/api/v1/data/processes/import'" :show-file-list="false" :on-success="handleImportSuccess" :on-error="handleImportError" class="ml-auto mr-10">
+              <el-button type="success" plain>Excel 导入</el-button>
+            </el-upload>
+            <el-button type="info" plain @click="handleExport('processes')">Excel 导出</el-button>
           </div>
           <el-table :data="tableData.processes" v-loading="loading" border stripe height="calc(100vh - 300px)">
             <el-table-column prop="process_code" label="工序代码" width="150" />
@@ -164,6 +215,10 @@
         <el-tab-pane label="BOM档案" name="boms">
           <div class="filter-bar">
             <el-button type="primary" @click="fetchData">刷新</el-button>
+            <el-upload :action="'http://localhost:8100/api/v1/data/boms/import'" :show-file-list="false" :on-success="handleImportSuccess" :on-error="handleImportError" class="ml-auto mr-10">
+              <el-button type="success" plain>Excel 导入</el-button>
+            </el-upload>
+            <el-button type="info" plain @click="handleExport('boms')">Excel 导出</el-button>
           </div>
           <el-table :data="tableData.boms" v-loading="loading" border stripe height="calc(100vh - 300px)">
             <el-table-column prop="bom_code" label="BOM编码" width="150" />
@@ -191,7 +246,7 @@ const activeTab = ref('materials')
 const loading = ref(false)
 
 const tabs = [
-  'materials', 'production-orders', 'employees', 'workshops', 
+  'materials', 'production-orders', 'confirmations', 'employees', 'workshops', 
   'defect-reasons', 'material-groups', 'routings', 'processes', 'boms'
 ]
 
@@ -229,6 +284,23 @@ const fetchData = async () => {
 
 const handleTabChange = () => {
   fetchData()
+}
+
+const handleExport = (tab: string) => {
+  window.open('http://localhost:8100/api/v1/data/' + tab + '/export')
+}
+
+const handleImportSuccess = (res: any) => {
+  if (res.error) {
+    ElMessage.error(res.error)
+  } else {
+    ElMessage.success('导入成功，处理条数：' + res.count)
+    fetchData()
+  }
+}
+
+const handleImportError = () => {
+  ElMessage.error('网络或服务器异常，导入失败')
 }
 
 onMounted(() => {

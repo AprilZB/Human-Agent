@@ -43,3 +43,20 @@ class TaskPersonnelAssignment(Base):
     status = Column(String(20), default='AI_RECOMMENDED')
     confirmed_by = Column(String(50))
     created_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"))
+
+class BizProductionConfirmation(Base):
+    __tablename__ = 'biz_production_confirmation'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    order_code = Column(String(50), nullable=False)
+    material_code = Column(String(50), nullable=False)
+    work_center_code = Column(String(50))
+    batch_no = Column(String(50))
+    yield_quantity = Column(DECIMAL(10, 2), default=0)
+    scrap_quantity = Column(DECIMAL(10, 2), default=0)
+    confirmation_no = Column(String(50))
+    plant = Column(String(50))
+    exec_datetime = Column(DATETIME)
+    cancel_flag = Column(Enum('Y', 'N'), default='N')
+    reversed_flag = Column(Enum('Y', 'N'), default='N')
+    created_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"))
+
