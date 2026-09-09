@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="data-container">
     <el-card shadow="hover" class="data-card">
       <el-tabs v-model="activeTab" @tab-change="handleTabChange">
@@ -211,7 +211,7 @@ const fetchData = async () => {
   loading.value = true
   const tab = activeTab.value
   try {
-    const res = await axios.get(http://localhost:8100/api/v1/data/ + tab, {
+    const res = await axios.get('http://localhost:8100/api/v1/data/' + tab, {
       params: {
         page: pages[tab],
         size: 10,
