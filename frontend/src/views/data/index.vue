@@ -153,6 +153,7 @@
             <el-table-column prop="process_name" label="工序名称" width="200" />
             <el-table-column prop="standard_time_sec" label="标准工时(秒)" width="150" />
             <el-table-column prop="required_skills" label="所需技能" />
+            <el-table-column prop="bound_bom_code" label="绑定BOM" width="150" />
           </el-table>
           <div class="pagination-container">
             <el-pagination v-model:current-page="pages.processes" :total="totals.processes" layout="total, prev, pager, next" @current-change="fetchData" />
@@ -170,7 +171,6 @@
             <el-table-column prop="component_code" label="子件编码" width="150" />
             <el-table-column prop="quantity" label="用量" width="100" />
             <el-table-column prop="alt_group" label="替代物料同行号" width="150" />
-            <el-table-column prop="operation_code" label="绑定工序" width="150" />
           </el-table>
           <div class="pagination-container">
             <el-pagination v-model:current-page="pages.boms" :total="totals.boms" layout="total, prev, pager, next" @current-change="fetchData" />

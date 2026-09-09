@@ -1,4 +1,4 @@
-﻿from sqlalchemy import Column, Integer, String, TIMESTAMP, text, DATETIME, JSON, ForeignKey, DECIMAL, Enum
+from sqlalchemy import Column, Integer, String, TIMESTAMP, text, DATETIME, JSON, ForeignKey, DECIMAL, Enum
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
@@ -8,6 +8,7 @@ class BaseProcess(Base):
     process_name = Column(String(100), nullable=False)
     required_skills = Column(JSON, nullable=False)
     standard_time_sec = Column(Integer)
+    bound_bom_code = Column(String(50)) # 绑定的BOM编码
     created_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"))
 
 class BizProductionOrder(Base):

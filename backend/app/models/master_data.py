@@ -1,4 +1,4 @@
-﻿from sqlalchemy import Column, Integer, String, TIMESTAMP, text, JSON, Boolean, ForeignKey, Date, Numeric
+from sqlalchemy import Column, Integer, String, TIMESTAMP, text, JSON, Boolean, ForeignKey, Date, Numeric
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
@@ -93,6 +93,5 @@ class BaseBom(Base):
     component_code = Column(String(50), ForeignKey('base_material.material_code'))
     quantity = Column(Numeric(10, 2), nullable=False)
     alt_group = Column(String(50)) # 替代物料同行号/替代组
-    operation_code = Column(String(50)) # 绑定的工序
     created_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"))
 
