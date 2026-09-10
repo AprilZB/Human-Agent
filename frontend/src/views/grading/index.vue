@@ -1,6 +1,6 @@
 ﻿<template>
   <div class="grading-container">
-    <el-card shadow="hover">
+    <el-card shadow="hover" class="grading-card">
       <template #header>
         <div class="flex-between">
           <span>员工日考评</span>
@@ -24,7 +24,7 @@
         border 
         stripe 
         v-loading="loading" 
-        height="calc(100vh - 160px)"
+        height="100%"
         class="excel-table"
       >
         <el-table-column prop="employee_name" label="姓名" width="80" fixed />
@@ -169,13 +169,27 @@ onMounted(() => {
   width: 100%;
 }
 
+.grading-container {
+  height: calc(100vh - 120px);
+  display: flex;
+  flex-direction: column;
+}
+.grading-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+:deep(.grading-card .el-card__body) {
+  flex: 1;
+  padding: 0;
+  overflow: hidden;
+}
 .excel-table {
   font-size: 12px;
+  width: 100%;
+  height: 100%;
 }
 .grade-cell {
   padding: 2px;
-}
-:deep(.el-card__body) {
-  padding: 10px;
 }
 </style>
