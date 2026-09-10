@@ -92,7 +92,7 @@ const fetchData = async () => {
   try {
     let url = '/api/v1/report/overtime?'
     if (dateRange.value && dateRange.value.length === 2) {
-      url += start_date=&end_date=
+      url += "start_date=" + dateRange.value[0] + "&end_date=" + dateRange.value[1]
     }
     const res = await axios.get(url)
     employees.value = res.data
@@ -108,7 +108,7 @@ const openDetail = async (row: any) => {
   detailLoading.value = true
   activeTab.value = 'this_month'
   try {
-    const res = await axios.get(/api/v1/report/overtime/)
+    const res = await axios.get("/api/v1/report/overtime/" + row.employee_id)
     details.value = res.data
   } catch (e) {
     ElMessage.error('获取明细失败')
