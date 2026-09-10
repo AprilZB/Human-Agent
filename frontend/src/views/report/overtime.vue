@@ -1,6 +1,6 @@
 ﻿<template>
-  <div class="report-container">
-    <el-card shadow="hover">
+  <div class="report-container flex-col-container">
+    <el-card shadow="hover" class="flex-col-card">
       <template #header>
         <div class="filter-bar">
           <el-date-picker
@@ -18,7 +18,7 @@
         </div>
       </template>
 
-      <el-table :data="employees" v-loading="loading" border stripe height="calc(100vh - 200px)">
+      <el-table :data="employees" v-loading="loading" border stripe height="100%">
         <el-table-column prop="employee_id" label="工号" width="150" fixed />
         <el-table-column prop="employee_name" label="姓名" width="150" />
         <el-table-column prop="total_overtime" label="累计加班时长(H)" width="150" class-name="text-primary fw-bold" />
@@ -130,4 +130,24 @@ onMounted(() => {
 .filter-bar { display: flex; align-items: center; }
 .mr-10 { margin-right: 10px; }
 .ml-auto { margin-left: auto; }
+
+.flex-col-container {
+  height: calc(100vh - 120px);
+  display: flex;
+  flex-direction: column;
+}
+.flex-col-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0;
+}
+:deep(.flex-col-card .el-card__body) {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 15px; /* Keep some padding for reports, not 0 like grading */
+}
+
 </style>
