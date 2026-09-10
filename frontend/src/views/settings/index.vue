@@ -99,7 +99,7 @@ const form = ref<any>({})
 const fetchConfigs = async () => {
   loading.value = true
   try {
-    const res = await axios.get('http://localhost:8100/api/v1/sys/config')
+    const res = await axios.get('http://localhost:8100/api/v1/configs')
     configs.value = res.data
   } catch (error) {
     ElMessage.error('获取配置失败')
@@ -110,9 +110,9 @@ const fetchConfigs = async () => {
 
 const saveConfig = async (row: any) => {
   try {
-    await axios.post('http://localhost:8100/api/v1/sys/config', [
-      { config_key: row.config_key, config_value: row.config_value }
-    ])
+    await axios.put('http://localhost:8100/api/v1/configs/' + row.config_key, {
+      config_value: row.config_value
+    })
     ElMessage.success('保存成功')
   } catch (error) {
     ElMessage.error('保存失败')
@@ -122,7 +122,7 @@ const saveConfig = async (row: any) => {
 const fetchRules = async () => {
   loading.value = true
   try {
-    const res = await axios.get('http://localhost:8100/api/v1/sys/attendance-rules')
+    const res = await axios.get('http://localhost:8100/api/v1/attendance-rules')
     rules.value = res.data
   } catch (error) {
     ElMessage.error('获取规则失败')
@@ -156,7 +156,7 @@ const editRule = (row: any) => {
 
 const saveRule = async () => {
   try {
-    await axios.post('http://localhost:8100/api/v1/sys/attendance-rules', form.value)
+    await axios.post('http://localhost:8100/api/v1/attendance-rules', form.value)
     ElMessage.success('保存成功')
     dialogVisible.value = false
     fetchRules()
@@ -168,7 +168,7 @@ const saveRule = async () => {
 const deleteRule = async (code: string) => {
   try {
     await ElMessageBox.confirm('确认删除该班次规则吗?', '提示', { type: 'warning' })
-    await axios.delete('http://localhost:8100/api/v1/sys/attendance-rules/' + code)
+    await axios.delete('http://localhost:8100/api/v1/attendance-rules/' + code)
     ElMessage.success('删除成功')
     fetchRules()
   } catch (error) {

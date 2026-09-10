@@ -1,4 +1,4 @@
-﻿from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request
 from app.core.database import SessionLocal
 from app.models.system import SysConfig
 
@@ -33,7 +33,7 @@ from app.models.system import SysAttendanceRule
 from sqlalchemy.orm import Session
 from app.core.database import SessionLocal
 
-@sys_bp.route("/attendance-rules", methods=["GET"])
+@system_bp.route("/attendance-rules", methods=["GET"])
 def get_attendance_rules():
     db = SessionLocal()
     try:
@@ -54,7 +54,7 @@ def get_attendance_rules():
     finally:
         db.close()
 
-@sys_bp.route("/attendance-rules", methods=["POST"])
+@system_bp.route("/attendance-rules", methods=["POST"])
 def create_attendance_rule():
     db = SessionLocal()
     try:
@@ -66,7 +66,7 @@ def create_attendance_rule():
     finally:
         db.close()
 
-@sys_bp.route("/attendance-rules/<shift_code>", methods=["DELETE"])
+@system_bp.route("/attendance-rules/<shift_code>", methods=["DELETE"])
 def delete_attendance_rule(shift_code):
     db = SessionLocal()
     try:
