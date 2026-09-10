@@ -76,3 +76,14 @@ class BizEmployeeAttendance(Base):
     attendance_status = Column(String(50))
     calculated_overtime = Column(DECIMAL(10, 2), default=0)
     created_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"))
+
+
+class BizEmployeeDailyGrade(Base):
+    __tablename__ = 'biz_employee_daily_grade'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    grade_date = Column(DATE, nullable=False)
+    employee_id = Column(String(50), nullable=False)
+    score = Column(Integer, default=0) # -4, -2, 0, 2, 4
+    remark = Column(String(255))
+    graded_by = Column(String(50))
+    created_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"))
