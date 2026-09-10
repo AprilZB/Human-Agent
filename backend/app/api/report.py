@@ -125,8 +125,12 @@ def get_grading_report():
         _, last_day = calendar.monthrange(year, month)
         end_date = datetime(year, month, last_day).date()
 
+        workshop_code = request.args.get('workshop_code')
         # Get all employees
-        employees = db.query(BaseEmployee).all()
+        q = db.query(BaseEmployee)
+        if workshop_code:
+            q = q.filter_by(workshop_code=workshop_code)
+        employees = q.all()
         # Get grades for the month
         grades = db.query(BizEmployeeDailyGrade).filter(
             BizEmployeeDailyGrade.grade_date >= start_date,

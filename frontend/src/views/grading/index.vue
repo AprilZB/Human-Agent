@@ -3,7 +3,7 @@
     <el-card shadow="hover">
       <template #header>
         <div class="flex-between">
-          <span>员工考评 (月度打分)</span>
+          <span>员工日考评</span>
           <div>
             <el-date-picker
               v-model="selectedMonth"
@@ -19,21 +19,21 @@
       </template>
 
       <!-- Excel-like Table -->
-      <el-table 
+      <el-table size="small" 
         :data="employees" 
         border 
         stripe 
         v-loading="loading" 
-        height="calc(100vh - 200px)"
+        height="calc(100vh - 160px)"
         class="excel-table"
       >
-        <el-table-column prop="employee_name" label="姓名" width="100" fixed />
+        <el-table-column prop="employee_name" label="姓名" width="80" fixed />
         
         <el-table-column 
           v-for="day in daysInMonth" 
           :key="day" 
           :label="String(day)" 
-          width="60"
+          width="45"
           align="center"
         >
           <template #default="scope">
@@ -82,10 +82,16 @@ const daysInMonth = computed(() => {
   return Array.from({ length: days }, (_, i) => i + 1)
 })
 
+import { useUserStore } from '@/store/user'
 const fetchData = async () => {
   loading.value = true
+  const userStore = useUserStore()
   try {
-    const res = await axios.get('/api/v1/report/grading?month=' + selectedMonth.value)
+    let url = '/api/v1/report/grading?month=' + selectedMonth.value
+    if (userStore.userInfo?.workshop_code) {
+      url += '&workshop_code=' + userStore.userInfo.workshop_code
+    }
+    const res = await axios.get(url)
     employees.value = res.data
   } catch (e) {
     ElMessage.error('获取评分数据失败')
@@ -161,5 +167,15 @@ onMounted(() => {
 .quick-grade-btns .el-button {
   margin-left: 0;
   width: 100%;
+}
+
+.excel-table {
+  font-size: 12px;
+}
+.grade-cell {
+  padding: 2px;
+}
+:deep(.el-card__body) {
+  padding: 10px;
 }
 </style>
