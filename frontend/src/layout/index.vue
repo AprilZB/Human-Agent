@@ -15,9 +15,21 @@
           :ellipsis="false"
         >
           <el-menu-item index="/dashboard" v-if="userStore.userInfo?.role === 'TEAM_LEADER'">
-            <el-icon><Monitor /></el-icon>
-            生产工作台
-          </el-menu-item>
+          <el-icon><Monitor /></el-icon>
+          <span>派工工作台</span>
+        </el-menu-item>
+        <el-menu-item index="/report/production" v-if="userStore.userInfo?.role === 'TEAM_LEADER'">
+          <el-icon><Document /></el-icon>
+          <span>生产报表</span>
+        </el-menu-item>
+        <el-menu-item index="/report/overtime" v-if="userStore.userInfo?.role === 'TEAM_LEADER'">
+          <el-icon><Timer /></el-icon>
+          <span>加班报表</span>
+        </el-menu-item>
+        <el-menu-item index="/grading" v-if="userStore.userInfo?.role === 'TEAM_LEADER'">
+          <el-icon><Star /></el-icon>
+          <span>员工考评</span>
+        </el-menu-item>
           <el-menu-item index="/data" v-if="userStore.userInfo?.role === 'DATA_ADMIN'">
             <el-icon><Coin /></el-icon>
             数据维护
@@ -117,7 +129,7 @@ onMounted(async () => {
   // 如果当前路由不在权限内，做个简单的重定向
   setTimeout(() => {
     const r = userStore.userInfo?.role
-    if (r === 'TEAM_LEADER' && route.path !== '/dashboard') router.push('/dashboard')
+    if (r === 'TEAM_LEADER' && !['/dashboard', '/report/production', '/report/overtime', '/grading'].includes(route.path)) router.push('/dashboard')
     if (r === 'DATA_ADMIN' && route.path !== '/data') router.push('/data')
     if (r === 'SYS_ADMIN' && route.path !== '/settings') router.push('/settings')
   }, 100)
