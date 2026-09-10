@@ -235,7 +235,7 @@ const getEmpLabel = (empId: string) => {
 
 const fetchPendingOrders = async () => {
   try {
-    const res = await axios.get('http://localhost:8100/api/v1/prod/work-orders?date=' + pendingDate.value + '&status=PENDING,UNASSIGNED')
+    const res = await axios.get('/api/v1/prod/work-orders?date=' + pendingDate.value + '&status=PENDING,UNASSIGNED')
     pendingOrders.value = res.data
   } catch (error) {
     ElMessage.error('拉取待派工单失败')
@@ -245,7 +245,7 @@ const fetchPendingOrders = async () => {
 const fetchDispatchedOrders = async () => {
   try {
     const [start, end] = dispatchedDateRange.value || ['', '']
-    let url = 'http://localhost:8100/api/v1/prod/work-orders?status=ASSIGNED'
+    let url = '/api/v1/prod/work-orders?status=ASSIGNED'
     if (start && end) {
       url += '&start_date=' + start + '&end_date=' + end
     }
@@ -269,7 +269,7 @@ const quickConfirm = async (wo: any) => {
   const emps = wo.assignments.map((a: any) => a.employee_id)
   
   try {
-    await axios.post('http://localhost:8100/api/v1/prod/work-orders/' + wo.work_order_code + '/confirm-dispatch', {
+    await axios.post('/api/v1/prod/work-orders/' + wo.work_order_code + '/confirm-dispatch', {
       employees: emps
     })
     ElMessage.success('一键派工成功！')
@@ -295,7 +295,7 @@ const openDispatchDialog = async (wo: any) => {
     // 若无预案则触发智能匹配
     matchLoading.value = true
     try {
-      const res = await axios.post('http://localhost:8100/api/v1/prod/work-orders/' + wo.work_order_code + '/match')
+      const res = await axios.post('/api/v1/prod/work-orders/' + wo.work_order_code + '/match')
       const assignments = res.data.assignments || []
       assignments.forEach((a: any) => {
         selectedEmployees.value.push(a.employee_id)
@@ -319,7 +319,7 @@ const confirmDispatch = async () => {
     return
   }
   try {
-    await axios.post('http://localhost:8100/api/v1/prod/work-orders/' + currentWo.value.work_order_code + '/confirm-dispatch', {
+    await axios.post('/api/v1/prod/work-orders/' + currentWo.value.work_order_code + '/confirm-dispatch', {
       employees: selectedEmployees.value
     })
     ElMessage.success('派工成功！工单已流转。')
@@ -337,7 +337,7 @@ const printDispatch = () => {
 
 const dingtalkPush = async () => {
   try {
-    await axios.post('http://localhost:8100/api/v1/prod/dingtalk-push', {
+    await axios.post('/api/v1/prod/dingtalk-push', {
       phone: '15957270693',
       message: '【派工提醒】您被分配到了工单：' + currentWo.value?.work_order_code
     })
@@ -393,7 +393,7 @@ onMounted(() => {
   align-items: center;
   white-space: nowrap;
   overflow: hidden;
-  animation: marquee 20s linear infinite;
+  animation: marquee 40s linear infinite;
 }
 .alert-marquee:hover, .alert-marquee.paused {
   animation-play-state: paused;

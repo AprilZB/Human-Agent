@@ -9,7 +9,7 @@
             <el-input v-model="filters.materials" placeholder="物料编码/描述" style="width: 200px" class="mr-10" />
             <el-button type="primary" @click="fetchData">查询</el-button>
             <el-button type="warning" plain class="mr-10" @click="handleDownloadTemplate(activeTab)">下载导入模板</el-button>
-            <el-upload :action="'http://localhost:8100/api/v1/data/materials/import'" :show-file-list="false" :on-success="handleImportSuccess" :on-error="handleImportError" class="ml-auto mr-10">
+            <el-upload :action="'/api/v1/data/materials/import'" :show-file-list="false" :on-success="handleImportSuccess" :on-error="handleImportError" class="ml-auto mr-10">
               <el-button type="success" plain>Excel 导入</el-button>
             </el-upload>
             <el-button type="info" plain @click="handleExport('materials')">Excel 导出</el-button>
@@ -42,7 +42,7 @@
             <el-input v-model="filters['production-orders']" placeholder="单号/物料" style="width: 200px" class="mr-10" />
             <el-button type="primary" @click="fetchData">查询</el-button>
             <el-button type="warning" plain class="mr-10" @click="handleDownloadTemplate(activeTab)">下载导入模板</el-button>
-            <el-upload :action="'http://localhost:8100/api/v1/data/production-orders/import'" :show-file-list="false" :on-success="handleImportSuccess" :on-error="handleImportError" class="ml-auto mr-10">
+            <el-upload :action="'/api/v1/data/production-orders/import'" :show-file-list="false" :on-success="handleImportSuccess" :on-error="handleImportError" class="ml-auto mr-10">
               <el-button type="success" plain>Excel 导入</el-button>
             </el-upload>
             <el-button type="info" plain @click="handleExport('production-orders')">Excel 导出</el-button>
@@ -66,7 +66,7 @@
             <el-input v-model="filters.confirmations" placeholder="订单号/物料" style="width: 200px" class="mr-10" />
             <el-button type="primary" @click="fetchData">查询</el-button>
             <el-button type="warning" plain class="mr-10" @click="handleDownloadTemplate(activeTab)">下载导入模板</el-button>
-            <el-upload :action="'http://localhost:8100/api/v1/data/confirmations/import'" :show-file-list="false" :on-success="handleImportSuccess" :on-error="handleImportError" class="ml-auto mr-10">
+            <el-upload :action="'/api/v1/data/confirmations/import'" :show-file-list="false" :on-success="handleImportSuccess" :on-error="handleImportError" class="ml-auto mr-10">
               <el-button type="success" plain>Excel 导入</el-button>
             </el-upload>
             <el-button type="info" plain @click="handleExport('confirmations')">Excel 导出</el-button>
@@ -96,7 +96,7 @@
             <el-input v-model="filters.employees" placeholder="工号/姓名" style="width: 200px" class="mr-10" />
             <el-button type="primary" @click="fetchData">查询</el-button>
             <el-button type="warning" plain class="mr-10" @click="handleDownloadTemplate(activeTab)">下载导入模板</el-button>
-            <el-upload :action="'http://localhost:8100/api/v1/data/employees/import'" :show-file-list="false" :on-success="handleImportSuccess" :on-error="handleImportError" class="ml-auto mr-10">
+            <el-upload :action="'/api/v1/data/employees/import'" :show-file-list="false" :on-success="handleImportSuccess" :on-error="handleImportError" class="ml-auto mr-10">
               <el-button type="success" plain>Excel 导入</el-button>
             </el-upload>
             <el-button type="info" plain @click="handleExport('employees')">Excel 导出</el-button>
@@ -121,7 +121,7 @@
             <el-input v-model="filters.attendances" placeholder="工号" style="width: 200px" class="mr-10" />
             <el-button type="primary" @click="fetchData">查询</el-button>
             <el-button type="warning" plain class="mr-10" @click="handleDownloadTemplate(activeTab)">下载导入模板</el-button>
-            <el-upload :action="'http://localhost:8100/api/v1/data/attendances/import'" :show-file-list="false" :on-success="handleImportSuccess" :on-error="handleImportError" class="ml-auto mr-10">
+            <el-upload :action="'/api/v1/data/attendances/import'" :show-file-list="false" :on-success="handleImportSuccess" :on-error="handleImportError" class="ml-auto mr-10">
               <el-button type="success" plain>Excel 导入</el-button>
             </el-upload>
             <el-button type="info" plain @click="handleExport('attendances')">Excel 导出</el-button>
@@ -149,7 +149,7 @@
           <div class="filter-bar">
             <el-button type="primary" @click="fetchData">刷新</el-button>
             <el-button type="warning" plain class="mr-10" @click="handleDownloadTemplate(activeTab)">下载导入模板</el-button>
-            <el-upload :action="'http://localhost:8100/api/v1/data/workshops/import'" :show-file-list="false" :on-success="handleImportSuccess" :on-error="handleImportError" class="ml-auto mr-10">
+            <el-upload :action="'/api/v1/data/workshops/import'" :show-file-list="false" :on-success="handleImportSuccess" :on-error="handleImportError" class="ml-auto mr-10">
               <el-button type="success" plain>Excel 导入</el-button>
             </el-upload>
             <el-button type="info" plain @click="handleExport('workshops')">Excel 导出</el-button>
@@ -170,7 +170,7 @@
           <div class="filter-bar">
             <el-button type="primary" @click="fetchData">刷新</el-button>
             <el-button type="warning" plain class="mr-10" @click="handleDownloadTemplate(activeTab)">下载导入模板</el-button>
-            <el-upload :action="'http://localhost:8100/api/v1/data/defect-reasons/import'" :show-file-list="false" :on-success="handleImportSuccess" :on-error="handleImportError" class="ml-auto mr-10">
+            <el-upload :action="'/api/v1/data/defect-reasons/import'" :show-file-list="false" :on-success="handleImportSuccess" :on-error="handleImportError" class="ml-auto mr-10">
               <el-button type="success" plain>Excel 导入</el-button>
             </el-upload>
             <el-button type="info" plain @click="handleExport('defect-reasons')">Excel 导出</el-button>
@@ -191,7 +191,7 @@
           <div class="filter-bar">
             <el-button type="primary" @click="fetchData">刷新</el-button>
             <el-button type="warning" plain class="mr-10" @click="handleDownloadTemplate(activeTab)">下载导入模板</el-button>
-            <el-upload :action="'http://localhost:8100/api/v1/data/material-groups/import'" :show-file-list="false" :on-success="handleImportSuccess" :on-error="handleImportError" class="ml-auto mr-10">
+            <el-upload :action="'/api/v1/data/material-groups/import'" :show-file-list="false" :on-success="handleImportSuccess" :on-error="handleImportError" class="ml-auto mr-10">
               <el-button type="success" plain>Excel 导入</el-button>
             </el-upload>
             <el-button type="info" plain @click="handleExport('material-groups')">Excel 导出</el-button>
@@ -211,7 +211,7 @@
           <div class="filter-bar">
             <el-button type="primary" @click="fetchData">刷新</el-button>
             <el-button type="warning" plain class="mr-10" @click="handleDownloadTemplate(activeTab)">下载导入模板</el-button>
-            <el-upload :action="'http://localhost:8100/api/v1/data/routings/import'" :show-file-list="false" :on-success="handleImportSuccess" :on-error="handleImportError" class="ml-auto mr-10">
+            <el-upload :action="'/api/v1/data/routings/import'" :show-file-list="false" :on-success="handleImportSuccess" :on-error="handleImportError" class="ml-auto mr-10">
               <el-button type="success" plain>Excel 导入</el-button>
             </el-upload>
             <el-button type="info" plain @click="handleExport('routings')">Excel 导出</el-button>
@@ -233,7 +233,7 @@
           <div class="filter-bar">
             <el-button type="primary" @click="fetchData">刷新</el-button>
             <el-button type="warning" plain class="mr-10" @click="handleDownloadTemplate(activeTab)">下载导入模板</el-button>
-            <el-upload :action="'http://localhost:8100/api/v1/data/processes/import'" :show-file-list="false" :on-success="handleImportSuccess" :on-error="handleImportError" class="ml-auto mr-10">
+            <el-upload :action="'/api/v1/data/processes/import'" :show-file-list="false" :on-success="handleImportSuccess" :on-error="handleImportError" class="ml-auto mr-10">
               <el-button type="success" plain>Excel 导入</el-button>
             </el-upload>
             <el-button type="info" plain @click="handleExport('processes')">Excel 导出</el-button>
@@ -255,7 +255,7 @@
           <div class="filter-bar">
             <el-button type="primary" @click="fetchData">刷新</el-button>
             <el-button type="warning" plain class="mr-10" @click="handleDownloadTemplate(activeTab)">下载导入模板</el-button>
-            <el-upload :action="'http://localhost:8100/api/v1/data/boms/import'" :show-file-list="false" :on-success="handleImportSuccess" :on-error="handleImportError" class="ml-auto mr-10">
+            <el-upload :action="'/api/v1/data/boms/import'" :show-file-list="false" :on-success="handleImportSuccess" :on-error="handleImportError" class="ml-auto mr-10">
               <el-button type="success" plain>Excel 导入</el-button>
             </el-upload>
             <el-button type="info" plain @click="handleExport('boms')">Excel 导出</el-button>
@@ -306,7 +306,7 @@ const fetchData = async () => {
   loading.value = true
   const tab = activeTab.value
   try {
-    const res = await axios.get('http://localhost:8100/api/v1/data/' + tab, {
+    const res = await axios.get('/api/v1/data/' + tab, {
       params: {
         page: pages[tab],
         size: 10,
@@ -327,11 +327,11 @@ const handleTabChange = () => {
 }
 
 const handleDownloadTemplate = (tab: string) => {
-  window.open('http://localhost:8100/api/v1/data/' + tab + '/export?template=1')
+  window.open('/api/v1/data/' + tab + '/export?template=1')
 }
 
 const handleExport = (tab: string) => {
-  window.open('http://localhost:8100/api/v1/data/' + tab + '/export')
+  window.open('/api/v1/data/' + tab + '/export')
 }
 
 const handleImportSuccess = (res: any) => {
