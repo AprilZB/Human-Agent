@@ -69,10 +69,10 @@ def get_overtime_report():
 
         q = db.query(
             BizEmployeeAttendance.employee_id,
-            BaseEmployee.employee_name,
+            BaseEmployee.name,
             func.sum(BizEmployeeAttendance.calculated_overtime).label('total_overtime')
         ).outerjoin(
-            BaseEmployee, BizEmployeeAttendance.employee_id == BaseEmployee.employee_code
+            BaseEmployee, BizEmployeeAttendance.employee_id == BaseEmployee.employee_id
         )
 
         if start_date:
@@ -80,7 +80,7 @@ def get_overtime_report():
         if end_date:
             q = q.filter(BizEmployeeAttendance.attendance_date <= end_date)
         
-        q = q.group_by(BizEmployeeAttendance.employee_id, BaseEmployee.employee_name)
+        q = q.group_by(BizEmployeeAttendance.employee_id, BaseEmployee.name)
         
         res = []
         for row in q.all():
@@ -147,9 +147,9 @@ def get_grading_report():
         res = []
         for e in employees:
             res.append({
-                "employee_id": e.employee_code,
-                "employee_name": e.employee_name,
-                "grades": grade_map.get(e.employee_code, {})
+                "employee_id": e.employee_id,
+                "employee_name": e.name,
+                "grades": grade_map.get(e.employee_id, {})
             })
         return jsonify(res)
     finally:
