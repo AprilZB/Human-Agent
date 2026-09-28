@@ -49,9 +49,9 @@ def get_work_orders():
         if date_str:
             try:
                 target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
-                query = query.filter(
-                    BizWorkOrder.created_at >= datetime.combine(target_date, datetime.min.time()),
-                    BizWorkOrder.created_at <= datetime.combine(target_date, datetime.max.time())
+                query = query.join(BizProductionOrder).filter(
+                    BizProductionOrder.plan_start_time >= datetime.combine(target_date, datetime.min.time()),
+                    BizProductionOrder.plan_start_time <= datetime.combine(target_date, datetime.max.time())
                 )
             except ValueError:
                 pass
