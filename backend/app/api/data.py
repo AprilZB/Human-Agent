@@ -46,7 +46,10 @@ HEADER_MAPPING = {
     "姓名": "name",
     "车间": "workshop_code",
     "健康证状态": "health_cert_status",
-    "上岗证状态": "work_cert_status"
+    "上岗证状态": "work_cert_status",
+    "健康证状态/有效期": "health_cert_status",
+    "上岗证状态/有效期": "work_cert_status",
+    "技能矩阵": "skills"
 }
 
 
@@ -276,6 +279,19 @@ def import_data(tab_name):
         # Handle nan -> None
         df = df.where(pd.notnull(df), None)
         records = df.to_dict(orient='records')
+        
+        # Parse JSON fields if necessary
+        import json
+        import pandas as pd
+        for rec in records:
+            for k, v in rec.items():
+                if isinstance(v, pd.Timestamp):
+                    rec[k] = v.strftime('%Y-%m-%d %H:%M:%S')
+                elif isinstance(v, str) and (v.strip().startswith('{') or v.strip().startswith('[')):
+                    try:
+                        rec[k] = json.loads(v)
+                    except:
+                        pass
         
         db = SessionLocal()
         try:
