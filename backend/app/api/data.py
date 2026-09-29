@@ -50,7 +50,38 @@ HEADER_MAPPING = {
     "健康证状态/有效期": "health_cert_status",
     "上岗证状态/有效期": "work_cert_status",
     "技能矩阵": "skills"
-}
+,
+    "BOM编码": "bom_code",
+    "父件编码": "product_code",
+    "子件编码": "component_code",
+    "用量": "quantity",
+    "本地不良代码": "defect_code",
+    "SAP不良代码": "sap_defect_code",
+    "不良名称": "defect_name",
+    "描述": "description",
+    "工序代码": "process_code",
+    "工序名称": "process_name",
+    "标准工时(秒)": "standard_time_sec",
+    "所需技能": "required_skills",
+    "排班班次": "shift_code",
+    "是否节假日": "is_holiday",
+    "实际签到": "actual_punch_in",
+    "实际签退": "actual_punch_out",
+    "考勤状态": "attendance_status",
+    "核算加班(H)": "calculated_overtime",
+    "工作中心": "work_center_code",
+    "生产批次号": "batch_no",
+    "生产单号": "order_code",
+    "品号": "material_code",
+    "合格品数": "yield_quantity",
+    "不合格数": "scrap_quantity",
+    "报废品数": "scrap_quantity",
+    "本地物料组编码": "group_code",
+    "SAP对照码": "sap_group_code",
+    "物料组名称": "group_name",
+    "车间编码": "workshop_code",
+    "车间名称": "workshop_name",
+    "SAP工作中心对照": "sap_work_center_code"}
 
 
 def paginate(query):
@@ -268,6 +299,9 @@ def import_data(tab_name):
         # Also, lowercase the headers just in case they are english but capitalized
         df.columns = [str(c).strip().lower() for c in df.columns]
         
+        if 'id' in df.columns:
+            df.drop(columns=['id'], inplace=True)
+            
         # Keep only columns that exist in the model
         model_cols = [c.name for c in model.__table__.columns]
         valid_cols = [c for c in df.columns if c in model_cols]
@@ -313,6 +347,15 @@ def import_data(tab_name):
                         if isinstance(emp_dict[eid].get('skills'), list):
                             emp_dict[eid]['skills'].append(skill)
             records = list(emp_dict.values())
+        else:
+            # Generic aggregation to prevent duplicate PKs in the same excel file
+            pk_name = model.__table__.primary_key.columns.keys()[0]
+            agg_dict = {}
+            for rec in records:
+                pval = rec.get(pk_name)
+                if pval is not None:
+                    agg_dict[pval] = rec
+            records = list(agg_dict.values())
 
         db = SessionLocal()
         try:
