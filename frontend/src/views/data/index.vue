@@ -280,7 +280,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import axios from 'axios'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox, ElLoading } from 'element-plus'
 
 const activeTab = ref('materials')
 const loading = ref(false)
@@ -334,16 +334,47 @@ const handleExport = (tab: string) => {
   window.open('/api/v1/data/' + tab + '/export')
 }
 
+
+let importLoadingInstance: any = null
+
+const beforeImport = () => {
+  importLoadingInstance = ElLoading.service({
+    lock: true,
+    text: '正在读取文档并极速导入中，请勿进行其他操作...',
+    background: 'rgba(0, 0, 0, 0.7)',
+  })
+  return true
+}
+
 const handleImportSuccess = (res: any) => {
+  if (importLoadingInstance) {
+    importLoadingInstance.close()
+  }
   if (res.error) {
     ElMessage.error(res.error)
   } else {
-    ElMessage.success('导入成功，处理条数：' + res.count)
-    fetchData()
+    ElMessageBox.alert(
+      `文档读取总数: ${res.total_read || 0}<br/>` +
+      `成功导入数: <span style="color: green">${res.success || 0}</span><br/>` +
+      `失败数量: <span style="color: red">${res.fail || 0}</span>` + 
+      (res.errors && res.errors.length > 0 ? `<br/><br/><span style="color: gray; font-size: 12px">错误详情 (部分): ${res.errors[0]}</span>` : ''),
+      '导入结果详细报告',
+      {
+        dangerouslyUseHTMLString: true,
+        type: res.fail > 0 ? 'warning' : 'success'
+      }
+    ).then(() => {
+      fetchData()
+    }).catch(() => {
+      fetchData()
+    })
   }
 }
 
 const handleImportError = () => {
+  if (importLoadingInstance) {
+    importLoadingInstance.close()
+  }
   ElMessage.error('网络或服务器异常，导入失败')
 }
 
