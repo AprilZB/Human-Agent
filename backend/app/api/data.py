@@ -293,6 +293,9 @@ def import_data(tab_name):
     model = TAB_MODEL_MAP[tab_name]
     
     try:
+        import pandas as pd
+        import math
+        
         df = pd.read_excel(file)
         # Rename columns based on mapping if they match
         df.rename(columns=HEADER_MAPPING, inplace=True)
@@ -312,21 +315,23 @@ def import_data(tab_name):
         
         # Handle nan -> None
         df = df.where(pd.notnull(df), None)
+        
         records = df.to_dict(orient='records')
         
-        # Parse JSON fields if necessary
-        import json
-        import pandas as pd
+        # Convert Timestamps to string and JSON strings to dict
         for rec in records:
             for k, v in rec.items():
-                if isinstance(v, pd.Timestamp):
+                if isinstance(v, float) and math.isnan(v):
+                    rec[k] = None
+                elif isinstance(v, pd.Timestamp):
                     rec[k] = v.strftime('%Y-%m-%d %H:%M:%S')
                 elif isinstance(v, str) and (v.strip().startswith('{') or v.strip().startswith('[')):
+                    import json
                     try:
                         rec[k] = json.loads(v)
                     except:
                         pass
-        
+                        
         # Special aggregation for employees: they might have multiple rows for different skills
         if tab_name == 'employees':
             emp_dict = {}
@@ -352,31 +357,37 @@ def import_data(tab_name):
             pk_names = model.__table__.primary_key.columns.keys()
             agg_dict = {}
             for rec in records:
-                # Composite key support
                 pval = tuple(rec.get(pk) for pk in pk_names)
-                # Only aggregate if all parts of the primary key are present
                 if all(p is not None for p in pval):
                     agg_dict[pval] = rec
             records = list(agg_dict.values())
 
         db = SessionLocal()
+        success = 0
+        fail = 0
+        errors = []
         try:
-            for rec in records:
-                # To prevent Identity Map duplicate insert issues when merging new items,
-                # we query the DB first to see if it exists.
-                pk_name = model.__table__.primary_key.columns.keys()[0]
-                pk_val = rec.get(pk_name)
-                
-                existing = None
-                if pk_val is not None:
-                    existing = db.query(model).filter(getattr(model, pk_name) == pk_val).first()
-                
-                if existing:
-                    for k, v in rec.items():
-                        setattr(existing, k, v)
-                else:
-                    obj = model(**rec)
-                    db.add(obj)
+            for i, rec in enumerate(records):
+                try:
+                    with db.begin_nested():
+                        pk_names = model.__table__.primary_key.columns.keys()
+                        existing = None
+                        if all(rec.get(pk) is not None for pk in pk_names):
+                            filters = [getattr(model, pk) == rec.get(pk) for pk in pk_names]
+                            existing = db.query(model).filter(*filters).first()
+                        
+                        if existing:
+                            for k, v in rec.items():
+                                setattr(existing, k, v)
+                        else:
+                            obj = model(**rec)
+                            db.add(obj)
+                        db.flush()
+                    success += 1
+                except Exception as e:
+                    fail += 1
+                    errors.append(f"Row {i+1} failed: {str(e)}")
+            
             db.commit()
             
             # Auto-generate Work Orders for Production Orders to make them show up in dispatch
@@ -386,20 +397,31 @@ def import_data(tab_name):
                 first_process = db.query(prod.BaseProcess).first()
                 if first_process:
                     for rec in records:
-                        order_code = rec.get('order_code')
-                        # Check if a work order already exists
-                        existing = db.query(prod.BizWorkOrder).filter_by(order_code=order_code).first()
-                        if not existing:
-                            wo = prod.BizWorkOrder(
-                                work_order_code=f"WO-{order_code}-01",
-                                order_code=order_code,
-                                process_code=first_process.process_code,
-                                required_count=3,  # default 3 people needed
-                                status='PENDING'
-                            )
-                            db.add(wo)
+                        try:
+                            with db.begin_nested():
+                                order_code = rec.get('order_code')
+                                existing_wo = db.query(prod.BizWorkOrder).filter_by(order_code=order_code).first()
+                                if not existing_wo:
+                                    wo = prod.BizWorkOrder(
+                                        work_order_code=f"WO-{order_code}-01",
+                                        order_code=order_code,
+                                        process_code=first_process.process_code,
+                                        required_count=3,
+                                        status='PENDING'
+                                    )
+                                    db.add(wo)
+                                db.flush()
+                        except:
+                            pass
                     db.commit()
-            return jsonify({"message": "Import successful", "count": len(records)})
+            
+            return jsonify({
+                "message": "Import finished", 
+                "total_read": len(records),
+                "success": success,
+                "fail": fail,
+                "errors": errors[:10] # limit returned errors
+            })
         except Exception as e:
             db.rollback()
             return jsonify({"error": str(e)}), 500
