@@ -89,9 +89,9 @@ class BaseRoutingDetail(Base):
 class BaseBom(Base):
     __tablename__ = 'base_bom'
     bom_code = Column(String(50), primary_key=True)
-    product_code = Column(String(50), ForeignKey('base_material.material_code'))
-    component_code = Column(String(50), ForeignKey('base_material.material_code'))
+    product_code = Column(String(50), ForeignKey('base_material.material_code'), primary_key=True)
+    component_code = Column(String(50), ForeignKey('base_material.material_code'), primary_key=True)
     quantity = Column(Numeric(10, 2), nullable=False)
-    alt_group = Column(String(50)) # 替代物料同行号/替代组
+    alt_group = Column(String(50))
     created_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"))
 

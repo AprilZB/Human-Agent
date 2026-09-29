@@ -349,11 +349,13 @@ def import_data(tab_name):
             records = list(emp_dict.values())
         else:
             # Generic aggregation to prevent duplicate PKs in the same excel file
-            pk_name = model.__table__.primary_key.columns.keys()[0]
+            pk_names = model.__table__.primary_key.columns.keys()
             agg_dict = {}
             for rec in records:
-                pval = rec.get(pk_name)
-                if pval is not None:
+                # Composite key support
+                pval = tuple(rec.get(pk) for pk in pk_names)
+                # Only aggregate if all parts of the primary key are present
+                if all(p is not None for p in pval):
                     agg_dict[pval] = rec
             records = list(agg_dict.values())
 
