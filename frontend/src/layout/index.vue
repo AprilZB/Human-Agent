@@ -105,11 +105,15 @@ const toggleTheme = (val: boolean) => {
 
 const switchRole = (role: string) => {
   let name = 'Mock User'
-  if (role === 'TEAM_LEADER') name = '张工 (班组长)'
+  let workshop_code = ''
+  if (role === 'TEAM_LEADER') {
+    name = '王军 (中包班组长)'
+    workshop_code = '中包车间'
+  }
   if (role === 'DATA_ADMIN') name = '李工 (数据管理员)'
   if (role === 'SYS_ADMIN') name = '王工 (系统管理员)'
   
-  userStore.setUserInfo({ ...userStore.userInfo, role, name })
+  userStore.setUserInfo({ ...userStore.userInfo, role, name, workshop_code })
   
   if (role === 'TEAM_LEADER') router.push('/dashboard')
   if (role === 'DATA_ADMIN') router.push('/data')
@@ -124,7 +128,7 @@ onMounted(async () => {
   if (!userStore.token) {
     const res: any = await mockAphrLogin('EMP1001')
     userStore.setToken(res.token)
-    userStore.setUserInfo(res.user)
+    userStore.setUserInfo({ ...res.user, name: '王军 (中包班组长)', workshop_code: '中包车间' })
   }
   // 如果当前路由不在权限内，做个简单的重定向
   setTimeout(() => {

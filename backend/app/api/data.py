@@ -42,6 +42,18 @@ TAB_HEADER_OVERRIDE = {
         "SAP对照码": "sap_group_code",
         "sap对照码": "sap_group_code",
         "物料组名称": "group_name",
+    },
+    "boms": {
+        "BOM编码": "bom_code",
+        "bom编码": "bom_code",
+        "父件编码": "product_code",
+        "子件编码": "component_code",
+        "用量": "quantity",
+        "替代物料同行号": "alt_group",
+        "同行号": "alt_group",
+        "替代组": "alt_group",
+        "ALT_group": "alt_group",
+        "alt_group": "alt_group",
     }
 }
 
@@ -92,9 +104,15 @@ HEADER_MAPPING = {
 
     # BOM与工艺
     "BOM编码": "bom_code",
+    "bom编码": "bom_code",
     "父件编码": "product_code",
     "子件编码": "component_code",
     "用量": "quantity",
+    "替代物料同行号": "alt_group",
+    "同行号": "alt_group",
+    "替代组": "alt_group",
+    "ALT_group": "alt_group",
+    "alt_group": "alt_group",
     "本地不良代码": "defect_code",
     "SAP不良代码": "sap_defect_code",
     "不良名称": "defect_name",

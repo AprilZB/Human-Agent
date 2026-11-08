@@ -22,6 +22,15 @@ app.register_blueprint(report_bp, url_prefix='/api/v1/report')
 def read_root():
     return jsonify({"message": "Welcome to Human Agent API"})
 
+@app.errorhandler(500)
+def handle_500(e):
+    return jsonify({"error": f"服务器内部错误: {str(e)}"}), 500
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    return jsonify({"error": f"服务器异常: {str(e)}"}), 500
+
+
 if __name__ == "__main__":
     port = int(os.getenv("API_PORT", 8100))
     app.run(host="0.0.0.0", port=port, debug=True)

@@ -52,7 +52,7 @@ import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 
-const dateRange = ref<string[]>([])
+const dateRange = ref<string[]>(['2026-09-24', '2026-09-24'])
 const productCode = ref('')
 const orders = ref<any[]>([])
 const loading = ref(false)

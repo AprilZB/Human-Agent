@@ -66,7 +66,7 @@ import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 
-const dateRange = ref<string[]>([])
+const dateRange = ref<string[]>(['2026-09-01', '2026-09-30'])
 const employees = ref<any[]>([])
 const loading = ref(false)
 
@@ -76,15 +76,14 @@ const details = ref<any[]>([])
 const detailLoading = ref(false)
 
 const thisMonthData = computed(() => {
-  const thisMonthStr = new Date().toISOString().slice(0, 7)
-  return details.value.filter(d => d.attendance_date.startsWith(thisMonthStr))
+  const targetMonth = '2026-09'
+  const matched = details.value.filter(d => d.attendance_date && d.attendance_date.startsWith(targetMonth))
+  return matched.length > 0 ? matched : details.value
 })
 
 const lastMonthData = computed(() => {
-  const d = new Date()
-  d.setMonth(d.getMonth() - 1)
-  const lastMonthStr = d.toISOString().slice(0, 7)
-  return details.value.filter(d => d.attendance_date.startsWith(lastMonthStr))
+  const targetMonth = '2026-08'
+  return details.value.filter(d => d.attendance_date && d.attendance_date.startsWith(targetMonth))
 })
 
 const fetchData = async () => {

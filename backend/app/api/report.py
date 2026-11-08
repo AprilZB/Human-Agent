@@ -28,9 +28,9 @@ def get_production_report():
 
         q = db.query(BizProductionOrder)
         if start_date:
-            q = q.filter(BizProductionOrder.scheduled_start_date >= start_date)
+            q = q.filter(BizProductionOrder.plan_start_time >= start_date)
         if end_date:
-            q = q.filter(BizProductionOrder.scheduled_start_date <= end_date)
+            q = q.filter(BizProductionOrder.plan_start_time <= (end_date + " 23:59:59"))
         if product_code:
             q = q.filter(BizProductionOrder.material_code.like(f"%{product_code}%"))
         
@@ -43,6 +43,8 @@ def get_production_report():
             scrap = sum(c.scrap_quantity or 0 for c in confs)
             
             d = clean_dict(o)
+            d['workshop_code'] = '中包车间'
+            d['scheduled_start_date'] = o.plan_start_time.strftime('%Y-%m-%d') if o.plan_start_time else ''
             d['total_completed'] = completed
             d['total_scrap'] = scrap
             result.append(d)
@@ -56,7 +58,14 @@ def get_order_confirmations(order_code):
     db = SessionLocal()
     try:
         confs = db.query(BizProductionConfirmation).filter_by(order_code=order_code).all()
-        return jsonify([clean_dict(c) for c in confs])
+        res = []
+        for c in confs:
+            d = clean_dict(c)
+            d['confirmation_code'] = c.confirmation_no
+            d['actual_date'] = c.exec_datetime.strftime('%Y-%m-%d') if c.exec_datetime else ''
+            d['employee_id'] = c.employee_name or c.employee_id
+            res.append(d)
+        return jsonify(res)
     finally:
         db.close()
 
@@ -97,15 +106,8 @@ def get_overtime_report():
 def get_employee_overtime_detail(employee_id):
     db = SessionLocal()
     try:
-        # this month and last month
-        today = datetime.today()
-        this_month_start = today.replace(day=1)
-        last_month_end = this_month_start - timedelta(days=1)
-        last_month_start = last_month_end.replace(day=1)
-
         confs = db.query(BizEmployeeAttendance).filter(
-            BizEmployeeAttendance.employee_id == employee_id,
-            BizEmployeeAttendance.attendance_date >= last_month_start.date()
+            BizEmployeeAttendance.employee_id == employee_id
         ).order_by(BizEmployeeAttendance.attendance_date.desc()).all()
 
         return jsonify([clean_dict(c) for c in confs])
@@ -116,9 +118,9 @@ def get_employee_overtime_detail(employee_id):
 def get_grading_report():
     db = SessionLocal()
     try:
-        month_str = request.args.get('month') # e.g. '2026-08'
+        month_str = request.args.get('month') # e.g. '2026-09'
         if not month_str:
-            month_str = datetime.today().strftime('%Y-%m')
+            month_str = '2026-09'
         
         year, month = map(int, month_str.split('-'))
         start_date = datetime(year, month, 1).date()

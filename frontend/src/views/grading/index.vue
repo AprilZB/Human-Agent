@@ -67,7 +67,7 @@ import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 
-const selectedMonth = ref(new Date().toISOString().slice(0, 7))
+const selectedMonth = ref('2026-09')
 const employees = ref<any[]>([])
 const loading = ref(false)
 
@@ -102,15 +102,17 @@ const fetchData = async () => {
 
 const getGrade = (row: any, day: number) => {
   const dateStr = selectedMonth.value + '-' + String(day).padStart(2, '0')
-  const score = row.grades[dateStr]
-  return score !== undefined ? score : 0
+  const score = row.grades ? row.grades[dateStr] : undefined
+  if (score === undefined || score === 0) return '休'
+  return score
 }
 
-const getGradeClass = (score: number) => {
-  if (score === -4) return 'color-danger fw-bold'
-  if (score === -2) return 'color-warning fw-bold'
-  if (score === 2) return 'color-success fw-bold'
-  if (score === 4) return 'color-primary fw-bold'
+const getGradeClass = (score: any) => {
+  if (score === '休') return 'color-muted'
+  if (score === 4 || score >= 90) return 'color-primary fw-bold'
+  if (score === 2 || score >= 88) return 'color-success fw-bold'
+  if (score === -2 || (typeof score === 'number' && score < 86 && score >= 80)) return 'color-warning fw-bold'
+  if (score === -4 || (typeof score === 'number' && score < 80)) return 'color-danger fw-bold'
   return 'color-info'
 }
 
@@ -120,18 +122,21 @@ const openEdit = (row: any, day: number) => {
   dialogVisible.value = true
 }
 
-const saveGrade = async (score: number) => {
+const saveGrade = async (deltaScore: number) => {
   const dateStr = selectedMonth.value + '-' + String(currentDay.value).padStart(2, '0')
+  const totalScore = 86 + deltaScore
   try {
     await axios.post('/api/v1/report/grading', {
       employee_id: currentRow.value.employee_id,
       grade_date: dateStr,
-      score: score
+      score: totalScore,
+      remark: `班组长快捷评定 (加减分: ${deltaScore >= 0 ? '+' : ''}${deltaScore})`
     })
     ElMessage.success('打分成功')
     dialogVisible.value = false
     // local update
-    currentRow.value.grades[dateStr] = score
+    if (!currentRow.value.grades) currentRow.value.grades = {}
+    currentRow.value.grades[dateStr] = totalScore
   } catch (e) {
     ElMessage.error('打分失败')
   }

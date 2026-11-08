@@ -5,29 +5,29 @@
       <el-col :span="6">
         <el-card shadow="hover" class="info-card">
           <div class="info-header">所属班组</div>
-          <div class="info-value">冲压一班</div>
-          <div class="info-desc">当前班次: 早班 (08:00 - 16:00)</div>
+          <div class="info-value">中包车间</div>
+          <div class="info-desc">当前班次: 白班 (08:00 - 20:00)</div>
         </el-card>
       </el-col>
       <el-col :span="6">
         <el-card shadow="hover" class="info-card">
           <div class="info-header">人员出勤</div>
-          <div class="info-value text-primary">18 / 20</div>
-          <div class="info-desc">2人请假/缺勤</div>
+          <div class="info-value text-primary">8 / 8</div>
+          <div class="info-desc">全部在岗 (出勤率 100%)</div>
         </el-card>
       </el-col>
       <el-col :span="6">
         <el-card shadow="hover" class="info-card">
           <div class="info-header">车间环境</div>
           <div class="info-value text-success">运行正常</div>
-          <div class="info-desc">温度: 24°C | 湿度: 55%</div>
+          <div class="info-desc">温度: 22°C | 湿度: 50%</div>
         </el-card>
       </el-col>
       <el-col :span="6">
         <el-card shadow="hover" class="info-card">
           <div class="info-header">设备状态</div>
-          <div class="info-value text-warning">9 / 10</div>
-          <div class="info-desc">1台设备正在维保</div>
+          <div class="info-value text-success">全部正常</div>
+          <div class="info-desc">设备运行正常</div>
         </el-card>
       </el-col>
     </el-row>
@@ -191,24 +191,22 @@ const activeTab = ref('pending')
 const alertDetailVisible = ref(false)
 const currentAlert = ref<any>(null)
 const alerts = ref([
-  { type: '超时', color: '#F56C6C', content: '张三本周加班已超规定时长', detail: '员工张三 (EMP001) 本周累计加班达到 38 小时，超过了车间规定的单周 36 小时上限。为了员工身心健康与合规，已将其从本周候选名单中暂时移除，建议班组长关注。' },
-  { type: '设备', color: '#E6A23C', content: '冲压机#03 需要例行保养', detail: '设备编号：EQ-P-03\n下次保养日期应为今日。当前状态可能影响加工精度，请及时联系设备科或提交保养工单。' },
-  { type: '生产', color: '#409EFF', content: '存在1笔紧急插单任务待处理', detail: '工单号：WO-URGENT-001\n客户要求在明日前完成交付。该单已进入加急队列，请优先派工。' },
-  { type: '品质', color: '#F56C6C', content: 'A工序昨日出现轻微尺寸偏移', detail: '涉及批次：LOT-20260907\n质检部反馈昨日的冲压件存在 0.02mm 的尺寸公差偏移，建议今天开工前重新校准模具。' }
+  { type: '生产', color: '#409EFF', content: '2026-09-24 中包装生产任务已下发，工位就绪', detail: '今日中包装车间下发批量生产订单，各工序物料与工位均已准备就绪，请及时确认派工。' },
+  { type: '设备', color: '#67C23A', content: '中包封口机与装箱设备点检完毕，全部正常运行', detail: '设备编号：EQ-ZB-01 至 EQ-ZB-04\n早班前例行点检均符合工艺要求，处于完好在用状态。' },
+  { type: '考勤', color: '#409EFF', content: '中包车间出勤8人全勤，无异常缺勤', detail: '中包间白班员工全部按时打卡签到，健康证及上岗证均在有效期内。' },
+  { type: '品质', color: '#67C23A', content: '中包装灭菌装箱首件确认合格', detail: '中包装工序物料密封性与外盒标签核验合格，允许批量投产。' }
 ])
 
 const showAlertDetail = (item: any) => {
   currentAlert.value = item
   alertDetailVisible.value = true
 }
-// 待派工数据
-const pendingDate = ref(dayjs().format('YYYY-MM-DD'))
+// 待派工数据（默认测试日期 2026-09-24）
+const pendingDate = ref('2026-09-24')
 const pendingOrders = ref<any[]>([])
 
-// 已派工数据 (默认当周)
-const startOfWeek = dayjs().startOf('week').add(1, 'day').format('YYYY-MM-DD') // 周一
-const endOfWeek = dayjs().endOf('week').add(1, 'day').format('YYYY-MM-DD')     // 周日
-const dispatchedDateRange = ref([startOfWeek, endOfWeek])
+// 已派工数据 (默认当周 2026-09-21 至 2026-09-27)
+const dispatchedDateRange = ref(['2026-09-21', '2026-09-27'])
 const dispatchedOrders = ref<any[]>([])
 
 // 弹窗相关
@@ -218,15 +216,26 @@ const currentWo = ref<any>(null)
 const selectedEmployees = ref<string[]>([])
 const aiReasons = ref<Record<string, string>>({})
 
-// 模拟的班组全体员工数据
+// 中包车间员工数据
 const allEmployees = ref([
-  { key: 'EMP001', label: '张三 (高级工)' },
-  { key: 'EMP002', label: '李四 (中级工)' },
-  { key: 'EMP003', label: '王五 (初级工)' },
-  { key: 'EMP004', label: '赵六 (高级工)' },
-  { key: 'EMP005', label: '钱七 (学徒)' },
-  { key: 'EMP006', label: '孙八 (中级工)' }
+  { key: '404201195', label: '王军 (高级工 - 中包/装箱)' },
+  { key: '404245800', label: '刘端阳 (中级工 - 中包/装箱)' },
+  { key: '404245815', label: '孙梦佳 (中级工 - 中包/装箱)' },
+  { key: '404266762', label: '胡兰心 (中级工 - 中包/装箱)' },
+  { key: '411265010', label: '李凌锋 (高级工 - 中包/装箱)' }
 ])
+
+const loadEmployees = async () => {
+  try {
+    const res = await axios.get('/api/v1/data/employees?size=100')
+    if (res.data?.records && res.data.records.length > 0) {
+      allEmployees.value = res.data.records.map((e: any) => ({
+        key: String(e.employee_id),
+        label: `${e.employee_id} ${e.name} (${Array.isArray(e.skills) ? e.skills.slice(0, 2).join(',') : (e.skills || '中包工')})`
+      }))
+    }
+  } catch (e) {}
+}
 
 const getEmpLabel = (empId: string) => {
   const emp = allEmployees.value.find(e => e.key === empId)
@@ -348,6 +357,7 @@ const dingtalkPush = async () => {
 }
 
 onMounted(() => {
+  loadEmployees()
   fetchPendingOrders()
 })
 </script>
