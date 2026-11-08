@@ -73,6 +73,13 @@ def get_work_orders():
             proc = db.query(BaseProcess).filter(BaseProcess.process_code == wo.process_code).first()
             
             assignments = db.query(TaskPersonnelAssignment).filter(TaskPersonnelAssignment.work_order_code == wo.work_order_code).all()
+            if not assignments and wo.status in ['PENDING', 'UNASSIGNED']:
+                try:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    assignments = loop.run_until_complete(run_intelligent_matching(db, wo.work_order_code))
+                except Exception as ex:
+                    print(f"Auto-match fallback error: {ex}")
             emps = [{"employee_id": a.employee_id, "reason": a.recommend_reason} for a in assignments]
             
             result.append({

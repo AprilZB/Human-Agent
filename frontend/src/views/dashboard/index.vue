@@ -231,14 +231,14 @@ const loadEmployees = async () => {
     if (res.data?.records && res.data.records.length > 0) {
       allEmployees.value = res.data.records.map((e: any) => ({
         key: String(e.employee_id),
-        label: `${e.employee_id} ${e.name} (${Array.isArray(e.skills) ? e.skills.slice(0, 2).join(',') : (e.skills || '中包工')})`
+        label: `${e.name} (${Array.isArray(e.skills) ? e.skills.slice(0, 1).join(',') : (e.skills || '中包工')})`
       }))
     }
   } catch (e) {}
 }
 
-const getEmpLabel = (empId: string) => {
-  const emp = allEmployees.value.find(e => e.key === empId)
+const getEmpLabel = (empId: any) => {
+  const emp = allEmployees.value.find(e => String(e.key) === String(empId))
   return emp ? emp.label : empId
 }
 

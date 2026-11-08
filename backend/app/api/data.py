@@ -716,7 +716,9 @@ def import_data(tab_name):
             # Auto-generate Work Orders for Production Orders to make them show up in dispatch
             if tab_name == 'production-orders':
                 import app.models.production as prod
-                first_process = db.query(prod.BaseProcess).first()
+                first_process = db.query(prod.BaseProcess).filter(
+                    (prod.BaseProcess.process_code == '10') | (prod.BaseProcess.process_name.like('%中包%'))
+                ).first() or db.query(prod.BaseProcess).first()
                 if first_process:
                     for rec in records:
                         try:
@@ -728,7 +730,7 @@ def import_data(tab_name):
                                         work_order_code=f"WO-{order_code}-01",
                                         order_code=order_code,
                                         process_code=first_process.process_code,
-                                        required_count=3,
+                                        required_count=2,
                                         status='PENDING'
                                     )
                                     db.add(wo)
