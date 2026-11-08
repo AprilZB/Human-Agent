@@ -7,6 +7,7 @@ from app.api.system import system_bp
 from app.api.production import production_bp
 from app.api.data import data_bp
 from app.api.report import report_bp
+from app.services.aphr_service import init_aphr_scheduler
 
 load_dotenv(override=True)
 
@@ -17,6 +18,11 @@ app.register_blueprint(system_bp, url_prefix='/api/v1')
 app.register_blueprint(production_bp, url_prefix='/api/v1/prod')
 app.register_blueprint(data_bp, url_prefix='/api/v1/data')
 app.register_blueprint(report_bp, url_prefix='/api/v1/report')
+
+try:
+    init_aphr_scheduler()
+except Exception:
+    pass
 
 @app.route("/")
 def read_root():
