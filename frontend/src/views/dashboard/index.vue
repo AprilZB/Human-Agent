@@ -345,14 +345,21 @@ const printDispatch = () => {
 }
 
 const dingtalkPush = async () => {
+  const targetIds = selectedEmployees.value.length > 0 ? selectedEmployees.value : ['404256402', '404191243']
+  const woCode = currentWo.value?.work_order_code || 'WO-13551286-01'
   try {
-    await axios.post('/api/v1/prod/dingtalk-push', {
-      phone: '15957270693',
-      message: '【派工提醒】您被分配到了工单：' + currentWo.value?.work_order_code
+    const res = await axios.post('/api/v1/prod/dingtalk-push', {
+      employee_ids: targetIds,
+      work_order_code: woCode,
+      message: '【派工提醒】您已被分配至生产任务工单：' + woCode + '，工序：中包装，请按时出勤开工。'
     })
-    ElMessage.success('钉钉消息已推送到 15957270693')
-  } catch (error) {
-    ElMessage.error('钉钉推送失败')
+    if (res.data.success) {
+      ElMessage.success(res.data.message || '钉钉派工通知已推送！')
+    } else {
+      ElMessage.warning(res.data.message || '钉钉推送未完全成功')
+    }
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.message || '钉钉推送失败')
   }
 }
 

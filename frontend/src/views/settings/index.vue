@@ -253,6 +253,199 @@
             </el-table-column>
           </el-table>
         </el-tab-pane>
+        <!-- Tab 4: 钉钉工作通知对接与测试 -->
+        <el-tab-pane label="钉钉工作通知对接与测试" name="dingtalk">
+          <!-- 顶部状态卡片行 -->
+          <el-row :gutter="16" class="mb-16">
+            <el-col :span="8">
+              <el-card shadow="never" class="status-card">
+                <template #header>
+                  <div class="card-header-flex">
+                    <span class="font-bold">钉钉中台服务状态</span>
+                    <el-tag :type="dtConn.tested ? (dtConn.success ? 'success' : 'danger') : 'info'" size="small">
+                      {{ dtConn.tested ? (dtConn.success ? '服务连通正常' : '连接异常') : '待检测' }}
+                    </el-tag>
+                  </div>
+                </template>
+                <div class="status-metric">
+                  <div class="metric-item">
+                    <span class="metric-label">服务 Base URL：</span>
+                    <span class="metric-val text-ellipsis" :title="dtConn.url">{{ dtConn.url }}</span>
+                  </div>
+                  <div class="metric-item">
+                    <span class="metric-label">接口文档：</span>
+                    <a href="http://10.11.100.154:8089/api/docs" target="_blank" style="color: #409EFF; text-decoration: none;">
+                      http://10.11.100.154:8089/api/docs ↗
+                    </a>
+                  </div>
+                  <div class="metric-item">
+                    <span class="metric-label">响应延迟：</span>
+                    <span class="metric-val">{{ dtConn.tested && dtConn.success ? `${dtConn.latency_ms} ms` : '-' }}</span>
+                  </div>
+                </div>
+                <div class="card-actions">
+                  <el-button type="primary" plain size="small" :loading="dtConnLoading" @click="testDtConnection">检测服务连通</el-button>
+                </div>
+              </el-card>
+            </el-col>
+
+            <el-col :span="8">
+              <el-card shadow="never" class="status-card">
+                <template #header>
+                  <div class="card-header-flex">
+                    <span class="font-bold">测试员工 1：张勃</span>
+                    <el-tag type="primary" size="small">工号: 404256402</el-tag>
+                  </div>
+                </template>
+                <div class="status-metric">
+                  <div class="metric-item">
+                    <span class="metric-label">所属部门：</span>
+                    <span class="metric-val">企划部 / 智能制造部</span>
+                  </div>
+                  <div class="metric-item">
+                    <span class="metric-label">钉钉 UserID：</span>
+                    <span class="metric-val font-bold text-blue">1636684046776099</span>
+                  </div>
+                  <div class="metric-item">
+                    <span class="metric-label">绑定手机：</span>
+                    <span class="metric-val">15957270693</span>
+                  </div>
+                </div>
+                <div class="card-actions">
+                  <el-button type="primary" size="small" :loading="dtSending" @click="sendSingleTest('404256402', '张勃')">
+                    向张勃推送测试消息
+                  </el-button>
+                </div>
+              </el-card>
+            </el-col>
+
+            <el-col :span="8">
+              <el-card shadow="never" class="status-card">
+                <template #header>
+                  <div class="card-header-flex">
+                    <span class="font-bold">测试员工 2：李丽丽</span>
+                    <el-tag type="success" size="small">工号: 404191243</el-tag>
+                  </div>
+                </template>
+                <div class="status-metric">
+                  <div class="metric-item">
+                    <span class="metric-label">所属部门：</span>
+                    <span class="metric-val">百通-生产部</span>
+                  </div>
+                  <div class="metric-item">
+                    <span class="metric-label">钉钉 UserID：</span>
+                    <span class="metric-val font-bold text-green">311642243526055534</span>
+                  </div>
+                  <div class="metric-item">
+                    <span class="metric-label">绑定手机：</span>
+                    <span class="metric-val">15905838558</span>
+                  </div>
+                </div>
+                <div class="card-actions">
+                  <el-button type="success" size="small" :loading="dtSending" @click="sendSingleTest('404191243', '李丽丽')">
+                    向李丽丽推送测试消息
+                  </el-button>
+                </div>
+              </el-card>
+            </el-col>
+          </el-row>
+
+          <!-- 中部：按工号发送钉钉工作通知表单 -->
+          <el-card shadow="never" class="mb-16">
+            <template #header>
+              <div class="card-header-flex">
+                <span class="font-bold">自定义工号解析与工作消息发送</span>
+                <div>
+                  <el-button size="small" @click="dtSendForm.employee_id = '404256402'; resolveDtUser()">填入张勃 (404256402)</el-button>
+                  <el-button size="small" @click="dtSendForm.employee_id = '404191243'; resolveDtUser()">填入李丽丽 (404191243)</el-button>
+                </div>
+              </div>
+            </template>
+            <el-form :model="dtSendForm" label-width="120px">
+              <el-row :gutter="20">
+                <el-col :span="12">
+                  <el-form-item label="员工工号">
+                    <div style="display: flex; width: 100%; gap: 10px;">
+                      <el-input v-model="dtSendForm.employee_id" placeholder="输入员工工号，如 404256402" clearable />
+                      <el-button type="primary" plain :loading="userResolveLoading" @click="resolveDtUser">解析钉钉身份</el-button>
+                    </div>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="消息标题">
+                    <el-input v-model="dtSendForm.title" placeholder="通知标题" />
+                  </el-form-item>
+                </el-col>
+              </el-row>
+
+              <!-- 解析出的用户信息展示 -->
+              <div v-if="resolvedUser" class="resolved-user-box mb-16">
+                <span class="font-bold mr-10">已解析人员：</span>
+                <el-tag type="primary" class="mr-10">{{ resolvedUser.name }}</el-tag>
+                <span class="mr-10"><b>部门:</b> {{ resolvedUser.department || '-' }}</span>
+                <span class="mr-10"><b>职位:</b> {{ resolvedUser.position || '-' }}</span>
+                <span class="mr-10"><b>手机:</b> {{ resolvedUser.mobile || '-' }}</span>
+                <span class="mr-10"><b>钉钉 UserID:</b> <code style="color: #409EFF">{{ resolvedUser.dingtalkUserId }}</code></span>
+              </div>
+
+              <el-form-item label="消息正文">
+                <el-input v-model="dtSendForm.message" type="textarea" :rows="3" placeholder="请输入工作通知详细内容" />
+              </el-form-item>
+
+              <el-form-item>
+                <el-button type="primary" :loading="dtSending" @click="handleCustomSend">发送钉钉工作通知</el-button>
+                <el-button type="warning" plain :loading="dtSending" @click="handleBatchSendAll">一键同时向张勃和李丽丽发送</el-button>
+              </el-form-item>
+            </el-form>
+          </el-card>
+
+          <!-- 底部：推送执行记录 -->
+          <el-card shadow="never">
+            <template #header>
+              <div class="card-header-flex">
+                <span class="font-bold">钉钉工作通知发送记录 (最近 {{ pushResults.length }} 条)</span>
+                <el-button size="small" link type="danger" v-if="pushResults.length > 0" @click="pushResults = []">清空记录</el-button>
+              </div>
+            </template>
+            <el-table :data="pushResults" border stripe style="width: 100%" height="240px">
+              <el-table-column prop="time" label="发送时间" width="110" align="center" />
+              <el-table-column prop="employee_id" label="员工工号" width="120" />
+              <el-table-column prop="name" label="姓名" width="100">
+                <template #default="scope">
+                  <span>{{ scope.row.name || '-' }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="department" label="所属部门" width="150" show-overflow-tooltip />
+              <el-table-column prop="dingtalkUserId" label="钉钉 UserID" width="180">
+                <template #default="scope">
+                  <code>{{ scope.row.dingtalkUserId || '-' }}</code>
+                </template>
+              </el-table-column>
+              <el-table-column prop="message" label="消息内容" min-width="220" show-overflow-tooltip />
+              <el-table-column prop="success" label="推送结果" width="100" align="center">
+                <template #default="scope">
+                  <el-tag :type="scope.row.success ? 'success' : 'danger'" size="small">
+                    {{ scope.row.success ? '发送成功' : '失败' }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="任务号 / 接口回执" min-width="160" show-overflow-tooltip>
+                <template #default="scope">
+                  <span v-if="scope.row.detail?.workflow_result?.response?.task_id" style="color: #67C23A">
+                    Task ID: {{ scope.row.detail.workflow_result.response.task_id }}
+                  </span>
+                  <span v-else-if="scope.row.detail?.post_result?.errcode === 0" style="color: #409EFF">
+                    POST: success (errcode 0)
+                  </span>
+                  <span v-else-if="scope.row.error" style="color: #F56C6C">
+                    {{ scope.row.error }}
+                  </span>
+                  <span v-else style="color: #909399">-</span>
+                </template>
+              </el-table-column>
+            </el-table>
+          </el-card>
+        </el-tab-pane>
       </el-tabs>
     </el-card>
 
@@ -554,6 +747,177 @@ const deleteRule = async (code: string) => {
   }
 }
 
+// ================= 钉钉工作通知对接 =================
+const dtConn = reactive({
+  tested: false,
+  success: false,
+  latency_ms: 0,
+  url: 'http://10.11.100.154:8089',
+  message: ''
+})
+const dtConnLoading = ref(false)
+
+const dtSendForm = reactive({
+  employee_id: '404256402',
+  title: '【甲丁智能体】生产工作通知',
+  message: '【派工提醒】您已被分配至生产任务工单：WO-13551286-01，工序：中包装，请按时出勤开工。'
+})
+
+const resolvedUser = ref<any>(null)
+const userResolveLoading = ref(false)
+const dtSending = ref(false)
+const pushResults = ref<any[]>([])
+
+const testDtConnection = async () => {
+  dtConnLoading.value = true
+  try {
+    const res = await axios.get('/api/v1/dingtalk/test-connection')
+    dtConn.tested = true
+    dtConn.success = res.data.success
+    dtConn.latency_ms = res.data.latency_ms
+    dtConn.url = res.data.url
+    dtConn.message = res.data.message
+    if (res.data.success) {
+      ElNotification({
+        title: '钉钉服务连接正常',
+        message: `服务地址: ${dtConn.url} (延迟: ${dtConn.latency_ms}ms)`,
+        type: 'success'
+      })
+    } else {
+      ElNotification({
+        title: '钉钉服务连接失败',
+        message: res.data.error || '无法连接钉钉服务',
+        type: 'error'
+      })
+    }
+  } catch (error: any) {
+    dtConn.tested = true
+    dtConn.success = false
+    ElNotification({
+      title: '钉钉服务连接失败',
+      message: error.message || '网络异常',
+      type: 'error'
+    })
+  } finally {
+    dtConnLoading.value = false
+  }
+}
+
+const resolveDtUser = async () => {
+  if (!dtSendForm.employee_id.trim()) {
+    ElMessage.warning('请输入要解析的员工工号')
+    return
+  }
+  userResolveLoading.value = true
+  try {
+    const res = await axios.get(`/api/v1/dingtalk/user/${dtSendForm.employee_id.trim()}`)
+    resolvedUser.value = res.data.user
+    ElMessage.success(`成功解析工号 ${dtSendForm.employee_id}：${res.data.user.name}`)
+  } catch (error: any) {
+    resolvedUser.value = null
+    ElMessage.error(error.response?.data?.message || '未查询到该工号对应的钉钉用户')
+  } finally {
+    userResolveLoading.value = false
+  }
+}
+
+const sendSingleTest = async (empId: string, empName: string) => {
+  dtSending.value = true
+  try {
+    const res = await axios.post('/api/v1/dingtalk/test', {
+      employee_id: empId,
+      title: '【测试】钉钉工作消息',
+      message: `【甲丁智能体】工号打通测试：${empName}收到中包车间生产派工通知。`
+    })
+    const item = res.data
+    pushResults.value.unshift({
+      ...item,
+      time: new Date().toLocaleTimeString()
+    })
+    if (item.success) {
+      ElNotification({
+        title: `向 ${empName} (${empId}) 推送成功`,
+        message: `钉钉 UserID: ${item.dingtalkUserId}，工作流 TaskId: ${item.detail?.workflow_result?.response?.task_id || '已接收'}`,
+        type: 'success'
+      })
+    } else {
+      ElNotification({
+        title: `向 ${empName} 推送失败`,
+        message: item.error || '请检查钉钉接口状态',
+        type: 'error'
+      })
+    }
+  } catch (error: any) {
+    ElMessage.error('推送请求失败')
+  } finally {
+    dtSending.value = false
+  }
+}
+
+const handleCustomSend = async () => {
+  if (!dtSendForm.employee_id.trim()) {
+    ElMessage.warning('请输入目标员工工号')
+    return
+  }
+  dtSending.value = true
+  try {
+    const res = await axios.post('/api/v1/dingtalk/test', {
+      employee_id: dtSendForm.employee_id.trim(),
+      title: dtSendForm.title,
+      message: dtSendForm.message
+    })
+    const item = res.data
+    pushResults.value.unshift({
+      ...item,
+      time: new Date().toLocaleTimeString()
+    })
+    if (item.success) {
+      ElNotification({
+        title: `消息已推送至 ${item.name || item.employee_id}`,
+        message: `钉钉 UserID: ${item.dingtalkUserId}`,
+        type: 'success'
+      })
+    } else {
+      ElNotification({
+        title: '推送失败',
+        message: item.error || '发送异常',
+        type: 'error'
+      })
+    }
+  } catch (error: any) {
+    ElMessage.error('推送失败')
+  } finally {
+    dtSending.value = false
+  }
+}
+
+const handleBatchSendAll = async () => {
+  dtSending.value = true
+  try {
+    const res = await axios.post('/api/v1/dingtalk/test', {
+      employee_id: 'ALL',
+      title: dtSendForm.title,
+      message: dtSendForm.message
+    })
+    const results = res.data.results || []
+    results.forEach((item: any) => {
+      pushResults.value.unshift({
+        ...item,
+        time: new Date().toLocaleTimeString()
+      })
+    })
+    ElNotification({
+      title: '批量推送完成',
+      message: `成功: ${res.data.success_count} 人，失败: ${res.data.fail_count} 人`,
+      type: res.data.success_count > 0 ? 'success' : 'error'
+    })
+  } catch (error: any) {
+    ElMessage.error('批量推送失败')
+  } finally {
+    dtSending.value = false
+  }
+}
+
 const handleTabChange = (tabName: string) => {
   if (tabName === 'aphr') {
     fetchAphrConfig()
@@ -562,6 +926,10 @@ const handleTabChange = (tabName: string) => {
     fetchConfigs()
   } else if (tabName === 'attendance') {
     fetchRules()
+  } else if (tabName === 'dingtalk') {
+    if (!dtConn.tested) {
+      testDtConnection()
+    }
   }
 }
 
@@ -651,5 +1019,13 @@ onMounted(() => {
   margin-top: 12px;
   display: flex;
   justify-content: flex-end;
+}
+
+.resolved-user-box {
+  background: #f4f4f5;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  border-left: 4px solid #409EFF;
 }
 </style>

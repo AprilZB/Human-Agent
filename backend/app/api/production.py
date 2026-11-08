@@ -3,6 +3,7 @@ from app.core.database import SessionLocal
 from app.models.production import BizProductionOrder, BizWorkOrder, TaskPersonnelAssignment, BaseProcess
 from app.services.dispatch_service import decompose_production_order
 from app.services.match_service import run_intelligent_matching
+from app.services.dingtalk_service import batch_send_by_employee_ids
 import asyncio
 from datetime import datetime
 
@@ -68,7 +69,6 @@ def get_work_orders():
         
         result = []
         for wo in wos:
-            # fetch related production order and process for details
             po = db.query(BizProductionOrder).filter(BizProductionOrder.order_code == wo.order_code).first()
             proc = db.query(BaseProcess).filter(BaseProcess.process_code == wo.process_code).first()
             
@@ -147,13 +147,36 @@ def confirm_dispatch(wo_code):
 
 @production_bp.route("/dingtalk-push", methods=["POST"])
 def dingtalk_push():
-    data = request.json
-    phone = data.get("phone", "15957270693")
-    message = data.get("message", "Task assigned")
+    data = request.json or {}
+    employee_ids = data.get("employee_ids") or []
+    if isinstance(employee_ids, str):
+        employee_ids = [e.strip() for e in employee_ids.split(",") if e.strip()]
+    if not employee_ids and data.get("employee_id"):
+        employee_ids = [str(data.get("employee_id")).strip()]
+        
+    wo_code = data.get("work_order_code", "")
+    message = data.get("message")
     
-    print(f"========== DINGTALK PUSH ==========")
-    print(f"Target Phone: {phone}")
-    print(f"Message: {message}")
-    print(f"===================================")
+    # 若有工单编码但未选人员，从该工单已派工表中获取
+    if not employee_ids and wo_code:
+        db = SessionLocal()
+        try:
+            assignments = db.query(TaskPersonnelAssignment).filter_by(work_order_code=wo_code).all()
+            employee_ids = [a.employee_id for a in assignments if a.employee_id]
+        finally:
+            db.close()
+            
+    # 默认兜底：若未指定则推送测试工号 (张勃 404256402, 李丽丽 404191243)
+    if not employee_ids:
+        employee_ids = ["404256402", "404191243"]
+        
+    if not message:
+        message = f"【派工提醒】您已被分配至生产任务工单：{wo_code or 'WO-13551286-01'}，工序：中包装，请按规范准时出勤开工。"
+        
+    report = batch_send_by_employee_ids(employee_ids, message, title="【生产现场派工提醒】")
     
-    return jsonify({"message": f"Successfully sent DingTalk message to {phone}", "success": True})
+    return jsonify({
+        "success": report["success_count"] > 0,
+        "message": f"成功向 {report['success_count']} 名员工发送钉钉工作通知",
+        "report": report
+    })

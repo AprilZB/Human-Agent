@@ -209,3 +209,67 @@ def get_aphr_synced_employees():
     finally:
         db.close()
 
+
+# ================= 钉钉中台消息推送接口 =================
+from app.services.dingtalk_service import (
+    get_dingtalk_user_by_employee_id,
+    send_dingtalk_work_notification,
+    batch_send_by_employee_ids,
+    get_dingtalk_service_url,
+    test_dingtalk_connection
+)
+
+@system_bp.route("/dingtalk/service-info", methods=["GET"])
+def get_dingtalk_info():
+    url = get_dingtalk_service_url()
+    return jsonify({
+        "service_url": url,
+        "test_users": [
+            {"name": "张勃", "employee_id": "404256402", "department": "企划部 / 智能制造部", "mobile": "15957270693"},
+            {"name": "李丽丽", "employee_id": "404191243", "department": "百通-生产部", "mobile": "15905838558"}
+        ]
+    })
+
+@system_bp.route("/dingtalk/test-connection", methods=["GET", "POST"])
+def check_dingtalk_conn():
+    res = test_dingtalk_connection()
+    return jsonify(res)
+
+@system_bp.route("/dingtalk/user/<employee_id>", methods=["GET"])
+def get_dingtalk_user(employee_id):
+    user = get_dingtalk_user_by_employee_id(employee_id)
+    if not user:
+        return jsonify({"found": False, "message": f"未找到工号 {employee_id} 对应的钉钉用户"}), 404
+    return jsonify({"found": True, "user": user})
+
+@system_bp.route("/dingtalk/test", methods=["POST"])
+def test_dingtalk_push():
+    data = request.json or {}
+    employee_id = data.get("employee_id")
+    message = data.get("message", "【甲丁智能体】这是一条来自系统管理员界面的钉钉工作消息推送测试。")
+    title = data.get("title", "【测试】钉钉工作消息")
+    
+    if not employee_id or employee_id == "ALL":
+        target_ids = ["404256402", "404191243"]
+        report = batch_send_by_employee_ids(target_ids, message, title)
+        return jsonify(report)
+    else:
+        result = send_dingtalk_work_notification(str(employee_id).strip(), message, title)
+        return jsonify(result)
+
+@system_bp.route("/dingtalk/send", methods=["POST"])
+def send_dingtalk_message():
+    data = request.json or {}
+    employee_ids = data.get("employee_ids") or []
+    if isinstance(employee_ids, str):
+        employee_ids = [e.strip() for e in employee_ids.split(",") if e.strip()]
+    message = data.get("message", "【甲丁智能体】工作提醒通知")
+    title = data.get("title", "【工作提醒】")
+    
+    if not employee_ids:
+        return jsonify({"error": "缺少员工工号列表 employee_ids"}), 400
+        
+    report = batch_send_by_employee_ids(employee_ids, message, title)
+    return jsonify(report)
+
+
