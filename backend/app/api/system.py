@@ -165,14 +165,20 @@ def get_aphr_synced_employees():
         page = int(request.args.get("page", 1))
         size = int(request.args.get("size", 10))
         keyword = request.args.get("keyword", "").strip()
+        status_filter = request.args.get("status", "").strip()
         
         q = db.query(BaseEmployee)
         if keyword:
             q = q.filter(or_(
                 BaseEmployee.employee_id.like(f"%{keyword}%"),
                 BaseEmployee.name.like(f"%{keyword}%"),
-                BaseEmployee.workshop_code.like(f"%{keyword}%")
+                BaseEmployee.workshop_code.like(f"%{keyword}%"),
+                BaseEmployee.department_name.like(f"%{keyword}%"),
+                BaseEmployee.position.like(f"%{keyword}%"),
+                BaseEmployee.direct_manager_name.like(f"%{keyword}%")
             ))
+        if status_filter:
+            q = q.filter(BaseEmployee.status == status_filter)
             
         total = q.count()
         items = q.order_by(BaseEmployee.employee_id.asc()).offset((page - 1) * size).limit(size).all()
@@ -182,9 +188,14 @@ def get_aphr_synced_employees():
             records.append({
                 "employee_id": emp.employee_id,
                 "name": emp.name,
+                "department_name": emp.department_name or "未分配部门",
+                "status": emp.status or "在职",
+                "direct_manager_name": emp.direct_manager_name or "无",
+                "direct_manager_id": emp.direct_manager_id,
+                "position": emp.position or "未设置岗位",
                 "workshop_code": emp.workshop_code,
-                "health_cert_status": emp.health_cert_status,
-                "work_cert_status": emp.work_cert_status,
+                "health_cert_status": emp.health_cert_status or "无健康证",
+                "work_cert_status": emp.work_cert_status or "无上岗证",
                 "skills": emp.skills or [],
                 "created_at": emp.created_at.strftime("%Y-%m-%d %H:%M:%S") if emp.created_at else None
             })
@@ -197,3 +208,4 @@ def get_aphr_synced_employees():
         })
     finally:
         db.close()
+

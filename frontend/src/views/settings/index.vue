@@ -148,40 +148,61 @@
               <div class="card-header-flex">
                 <span class="font-bold">系统内已同步员工基础数据 (共 {{ empTotal }} 人)</span>
                 <div class="search-box">
-                  <el-input v-model="empKeyword" placeholder="输入工号 / 姓名 / 车间过滤" clearable style="width: 250px" class="mr-10" @keyup.enter="fetchAphrEmployees" />
+                  <el-select v-model="empStatusFilter" placeholder="在职状态" clearable style="width: 110px" class="mr-10" @change="fetchAphrEmployees">
+                    <el-option label="在职" value="在职" />
+                    <el-option label="离职" value="离职" />
+                  </el-select>
+                  <el-input v-model="empKeyword" placeholder="工号/姓名/部门/上级/职位" clearable style="width: 240px" class="mr-10" @keyup.enter="fetchAphrEmployees" />
                   <el-button type="primary" size="small" @click="fetchAphrEmployees">查询</el-button>
+                  <el-button size="small" @click="resetSearch">重置</el-button>
                 </div>
               </div>
             </template>
-            <el-table :data="empList" v-loading="empLoading" border stripe style="width: 100%" height="320px">
-              <el-table-column prop="employee_id" label="员工工号" width="140" fixed />
-              <el-table-column prop="name" label="姓名" width="120" fixed />
-              <el-table-column prop="workshop_code" label="所属车间" width="130">
+            <el-table :data="empList" v-loading="empLoading" border stripe style="width: 100%" height="340px">
+              <el-table-column prop="employee_id" label="工号" width="120" fixed />
+              <el-table-column prop="name" label="姓名" width="100" fixed />
+              <el-table-column prop="department_name" label="所属部门" width="170" show-overflow-tooltip />
+              <el-table-column prop="position" label="岗位/职位" width="130" show-overflow-tooltip />
+              <el-table-column prop="status" label="在职状态" width="95" align="center">
                 <template #default="scope">
-                  <el-tag size="small" :type="scope.row.workshop_code ? 'success' : 'info'">{{ scope.row.workshop_code || '未设置' }}</el-tag>
+                  <el-tag size="small" :type="scope.row.status === '在职' ? 'success' : 'info'">
+                    {{ scope.row.status || '在职' }}
+                  </el-tag>
                 </template>
               </el-table-column>
-              <el-table-column prop="skills" label="技能矩阵">
+              <el-table-column prop="direct_manager_name" label="直属上级" width="110">
                 <template #default="scope">
-                  <el-tag v-for="s in scope.row.skills" :key="s" size="small" class="mr-5">{{ s }}</el-tag>
-                  <span v-if="!scope.row.skills || scope.row.skills.length === 0" style="color: #909399; font-size: 12px">暂无技能</span>
+                  <span>{{ scope.row.direct_manager_name || '-' }}</span>
                 </template>
               </el-table-column>
-              <el-table-column prop="health_cert_status" label="健康证状态" width="120">
+              <el-table-column prop="workshop_code" label="所属车间" width="110">
+                <template #default="scope">
+                  <el-tag size="small" :type="scope.row.workshop_code ? 'success' : 'info'">
+                    {{ scope.row.workshop_code || '未设置' }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="health_cert_status" label="健康证状态" width="110" align="center">
                 <template #default="scope">
                   <el-tag size="small" :type="scope.row.health_cert_status === '有效' ? 'success' : 'danger'">
-                    {{ scope.row.health_cert_status || '未知' }}
+                    {{ scope.row.health_cert_status || '无健康证' }}
                   </el-tag>
                 </template>
               </el-table-column>
-              <el-table-column prop="work_cert_status" label="上岗证状态" width="120">
+              <el-table-column prop="work_cert_status" label="上岗证状态" width="110" align="center">
                 <template #default="scope">
                   <el-tag size="small" :type="scope.row.work_cert_status === '有效' ? 'success' : 'warning'">
-                    {{ scope.row.work_cert_status || '未知' }}
+                    {{ scope.row.work_cert_status || '无上岗证' }}
                   </el-tag>
                 </template>
               </el-table-column>
-              <el-table-column prop="created_at" label="入库/同步时间" width="180" />
+              <el-table-column prop="skills" label="技能矩阵" min-width="140">
+                <template #default="scope">
+                  <el-tag v-for="s in scope.row.skills" :key="s" size="small" class="mr-5">{{ s }}</el-tag>
+                  <span v-if="!scope.row.skills || scope.row.skills.length === 0" style="color: #909399; font-size: 12px">-</span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="created_at" label="入库/同步时间" width="170" />
             </el-table>
             <div class="pagination-box">
               <el-pagination v-model:current-page="empPage" v-model:page-size="empSize" :total="empTotal" layout="total, prev, pager, next" @current-change="fetchAphrEmployees" />
@@ -309,6 +330,7 @@ const empTotal = ref(0)
 const empPage = ref(1)
 const empSize = ref(10)
 const empKeyword = ref('')
+const empStatusFilter = ref('')
 const empLoading = ref(false)
 
 const fetchAphrConfig = async () => {
@@ -421,7 +443,8 @@ const fetchAphrEmployees = async () => {
       params: {
         page: empPage.value,
         size: empSize.value,
-        keyword: empKeyword.value
+        keyword: empKeyword.value,
+        status: empStatusFilter.value
       }
     })
     empList.value = res.data.records || []
@@ -431,6 +454,13 @@ const fetchAphrEmployees = async () => {
   } finally {
     empLoading.value = false
   }
+}
+
+const resetSearch = () => {
+  empKeyword.value = ''
+  empStatusFilter.value = ''
+  empPage.value = 1
+  fetchAphrEmployees()
 }
 
 // ================= 全局系统参数 =================

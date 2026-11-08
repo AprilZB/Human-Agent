@@ -8,10 +8,16 @@ class BaseEmployee(Base):
     employee_id = Column(String(50), primary_key=True)
     name = Column(String(100), nullable=False)
     workshop_code = Column(String(50))
-    health_cert_status = Column(String(100)) # 记录状态和有效期
-    work_cert_status = Column(String(100))   # 记录状态和有效期
+    department_name = Column(String(100))    # 部门名称
+    status = Column(String(50), default='在职') # 在职状态 (在职/离职)
+    direct_manager_name = Column(String(100))# 直属上级姓名
+    direct_manager_id = Column(String(50))  # 直属上级工号
+    position = Column(String(100))           # 岗位职位
+    health_cert_status = Column(String(100)) # 记录健康证状态
+    work_cert_status = Column(String(100))   # 记录上岗证状态
     skills = Column(JSON)                    # 技能矩阵
     created_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"))
+
 
 class BaseWorkshop(Base):
     __tablename__ = 'base_workshop'

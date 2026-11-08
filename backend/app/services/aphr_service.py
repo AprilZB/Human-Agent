@@ -117,9 +117,59 @@ def fetch_all_aphr_employees(base_url, token):
             
     return all_employees
 
+def fetch_aphr_health_certs(base_url, token):
+    """抓取 APHR 健康证状态映射: { employee_id: status }"""
+    clean_url = base_url.rstrip('/')
+    headers = {"Authorization": f"Bearer {token}"}
+    health_map = {}
+    try:
+        url = f"{clean_url}/api/v1/settings/health-certs?limit=10000"
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            for item in data.get("items", []):
+                eid = str(item.get("employee_id") or "").strip()
+                status = item.get("status") or "无健康证"
+                if eid:
+                    health_map[eid] = status
+    except Exception as e:
+        logger.warning(f"获取 APHR 健康证列表异常: {e}")
+    return health_map
+
+def fetch_aphr_work_permits(base_url, token):
+    """抓取 APHR 上岗证状态映射: { employee_id: status }"""
+    clean_url = base_url.rstrip('/')
+    headers = {"Authorization": f"Bearer {token}"}
+    permit_map = {}
+    try:
+        # 1. 已审批生效上岗证
+        url1 = f"{clean_url}/api/v1/settings/work-permits?limit=10000"
+        req1 = urllib.request.Request(url1, headers=headers)
+        with urllib.request.urlopen(req1, timeout=20) as resp:
+            data1 = json.loads(resp.read().decode("utf-8"))
+            for item in data1.get("items", []):
+                eid = str(item.get("employee_id") or "").strip()
+                status = item.get("status") or "有效"
+                if eid:
+                    permit_map[eid] = status
+
+        # 2. 待处理/已同步上岗证
+        url2 = f"{clean_url}/api/v1/settings/work-permits-pending?limit=10000"
+        req2 = urllib.request.Request(url2, headers=headers)
+        with urllib.request.urlopen(req2, timeout=20) as resp:
+            data2 = json.loads(resp.read().decode("utf-8"))
+            for item in data2.get("items", []):
+                eid = str(item.get("employee_id") or "").strip()
+                status = item.get("status") or "有效"
+                if eid and eid not in permit_map:
+                    permit_map[eid] = status
+    except Exception as e:
+        logger.warning(f"获取 APHR 上岗证列表异常: {e}")
+    return permit_map
+
 def sync_employees_from_aphr(custom_config=None):
     """
-    核心同步逻辑：从 APHR 拉取员工基础数据并安全同步进本地 BaseEmployee
+    核心同步逻辑：从 APHR 拉取员工基础数据（含部门、在职状态、主管、岗位、真实健康证与上岗证状态）并同步进本地 BaseEmployee
     """
     db = SessionLocal()
     t0 = time.time()
@@ -133,7 +183,12 @@ def sync_employees_from_aphr(custom_config=None):
         password = config.get("APHR_PASSWORD", "admin123")
         
         token = get_aphr_token(base_url, username, password)
+        
+        # 1. 抓取员工列表
         raw_employees = fetch_all_aphr_employees(base_url, token)
+        # 2. 抓取真实健康证与上岗证
+        health_map = fetch_aphr_health_certs(base_url, token)
+        permit_map = fetch_aphr_work_permits(base_url, token)
         
         total_fetched = len(raw_employees)
         inserted_count = 0
@@ -150,23 +205,44 @@ def sync_employees_from_aphr(custom_config=None):
                 skipped_count += 1
                 continue
                 
-            position = str(item.get("position") or "")
+            # 基础必要人事字段
+            status = str(item.get("status") or "在职").strip()
+            position = str(item.get("position") or "").strip()
             aphr_workshop = str(item.get("workshop") or "").strip()
-            aphr_skills = item.get("skills")
+            direct_mgr_name = str(item.get("direct_manager_name") or "").strip() or None
+            direct_mgr_id = str(item.get("direct_manager_id") or "").strip() or None
+            
+            # 部门名称与路径
+            dept_name = ""
+            if item.get("department_path"):
+                dept_name = str(item.get("department_path")).strip()
+            elif isinstance(item.get("department"), dict):
+                dept_name = str(item["department"].get("name") or "").strip()
+                
+            # 真实健康证与上岗证状态匹配
+            real_health_status = health_map.get(eid, "无健康证")
+            real_work_status = permit_map.get(eid, "无上岗证")
             
             existing = existing_emp_map.get(eid)
             if existing:
                 existing.name = name
-                # 车间：优先保留已有车间，若为空则采用 APHR 车间
+                existing.department_name = dept_name or existing.department_name
+                existing.status = status
+                existing.direct_manager_name = direct_mgr_name or existing.direct_manager_name
+                existing.direct_manager_id = direct_mgr_id or existing.direct_manager_id
+                existing.position = position or existing.position
+                
+                # 车间：优先保留本地已有车间，若为空则写入 APHR 车间
                 if not existing.workshop_code and aphr_workshop:
                     existing.workshop_code = aphr_workshop
-                # 状态默认有效
-                if not existing.health_cert_status:
-                    existing.health_cert_status = "有效"
-                if not existing.work_cert_status:
-                    existing.work_cert_status = "有效"
+                    
+                # 真实证件状态同步
+                existing.health_cert_status = real_health_status
+                existing.work_cert_status = real_work_status
+                
                 # 技能：保留本地既有技能矩阵，若本地无技能且 APHR 有则同步
                 if not existing.skills or len(existing.skills) == 0:
+                    aphr_skills = item.get("skills")
                     if aphr_skills and isinstance(aphr_skills, list) and len(aphr_skills) > 0:
                         existing.skills = aphr_skills
                     elif "作业" in position:
@@ -174,6 +250,7 @@ def sync_employees_from_aphr(custom_config=None):
                 updated_count += 1
             else:
                 skills = []
+                aphr_skills = item.get("skills")
                 if aphr_skills and isinstance(aphr_skills, list) and len(aphr_skills) > 0:
                     skills = aphr_skills
                 elif "作业" in position:
@@ -183,8 +260,13 @@ def sync_employees_from_aphr(custom_config=None):
                     employee_id=eid,
                     name=name,
                     workshop_code=aphr_workshop or None,
-                    health_cert_status="有效",
-                    work_cert_status="有效",
+                    department_name=dept_name or None,
+                    status=status,
+                    direct_manager_name=direct_mgr_name,
+                    direct_manager_id=direct_mgr_id,
+                    position=position or None,
+                    health_cert_status=real_health_status,
+                    work_cert_status=real_work_status,
                     skills=skills
                 )
                 db.add(new_emp)
@@ -210,14 +292,14 @@ def sync_employees_from_aphr(custom_config=None):
             "APHR_LAST_SYNC_REPORT": json.dumps(report, ensure_ascii=False)
         })
         
-        logger.info(f"APHR全量员工同步完成: {report}")
+        logger.info(f"APHR全量员工人事档案同步完成: {report}")
         return report
         
     except Exception as e:
         db.rollback()
         duration = round(time.time() - t0, 2)
         err_msg = str(e)
-        logger.error(f"APHR全量员工同步失败: {err_msg}")
+        logger.error(f"APHR员工人事档案同步失败: {err_msg}")
         report = {
             "error": err_msg,
             "duration_sec": duration,
