@@ -284,6 +284,144 @@ TAB_MODEL_MAP = {
     "attendances": prod.BizEmployeeAttendance
 }
 
+TEMPLATE_CONFIG = {
+    "material-groups": {
+        "filename": "物料组导入模板.xlsx",
+        "sample": [
+            {"本地物料组编码": "C.DF.02A", "SAP对照码": "D.0B.0QE-1", "物料组名称": "PIONEER球囊扩张导管（国内）PI11515"},
+            {"本地物料组编码": "N.0.0499", "SAP对照码": "D.0B.0QE-1", "物料组名称": "FB2封口标签"}
+        ]
+    },
+    "routings": {
+        "filename": "工艺路线导入模板.xlsx",
+        "sample": [
+            {"路线编码": "OMP0010", "SAP对照码": "D.0B.13E-1", "路线名称": "中包装", "关联物料": "C.DF.26A", "版本": "/"},
+            {"路线编码": "OMP0006", "SAP对照码": "C.DF.26A", "路线名称": "灭菌装箱", "关联物料": "/", "版本": "/"}
+        ]
+    },
+    "confirmations": {
+        "filename": "确认报工导入模板.xlsx",
+        "sample": [{
+            "工厂": "4110", "工作中心": "BT003", "生产单号": "13551286", "品号": "D.0B.0RE-1",
+            "工序ID": "OMP0010", "工序名称": "中包装", "合格品数": 152, "报废品数": 0,
+            "报工工时": 3, "生产批次号": "260", "更新人编号": "hulx", "更新人名称": "胡兰心",
+            "lbl_fb_id": "6AB54AEB362CF20100003283", "报工日期": "2026-09-24"
+        }]
+    },
+    "boms": {
+        "filename": "BOM档案导入模板.xlsx",
+        "sample": [
+            {"BOM编码": "10", "父件编码": "D.0B.13E-1", "子件编码": "C.DF.26A", "用量": 1.0, "替代物料同行号": "A1"},
+            {"BOM编码": "10", "父件编码": "D.0B.13E-1", "子件编码": "N.0.0499", "用量": 1.0, "替代物料同行号": "A1"}
+        ]
+    },
+    "materials": {
+        "filename": "物料档案导入模板.xlsx",
+        "sample": [{
+            "物料编码": "C.DF.26A", "物料描述": "PIONEER球囊扩张导管（国内）PI13020",
+            "物料组": "D.0B.13E-1", "基本单位": "PCS", "特定工厂状态": "01",
+            "有效起始期": "2026-01-01", "安全库存": 100, "库存默认地点": "W01"
+        }]
+    },
+    "production-orders": {
+        "filename": "生产订单导入模板.xlsx",
+        "sample": [{
+            "订单编号": "13551286", "物料编码": "D.0B.0RE-1", "目标数量": 500,
+            "计划开始时间": "2026-09-24 08:00:00", "计划结束时间": "2026-09-24 18:00:00",
+            "状态": "RELEASED", "工艺路线": "OMP0010"
+        }]
+    },
+    "employees": {
+        "filename": "员工档案导入模板.xlsx",
+        "sample": [{
+            "工号": "hulx", "姓名": "胡兰心", "车间": "BT003",
+            "健康证状态/有效期": "有效", "上岗证状态/有效期": "有效", "技能矩阵": "中包装"
+        }]
+    },
+    "workshops": {
+        "filename": "车间档案导入模板.xlsx",
+        "sample": [{
+            "车间编码": "BT003", "车间名称": "中包装车间",
+            "SAP工作中心对照": "BT003", "负责人ID": "hulx"
+        }]
+    },
+    "defect-reasons": {
+        "filename": "不良原因导入模板.xlsx",
+        "sample": [{
+            "本地不良代码": "DEF-01", "SAP不良代码": "SAP-01",
+            "不良名称": "封口破损", "描述": "外包装袋封口处漏气"
+        }]
+    },
+    "processes": {
+        "filename": "工序档案导入模板.xlsx",
+        "sample": [{
+            "工序代码": "10", "工序名称": "中包装", "所需技能": "PI中包装",
+            "标准工时(秒)": 107, "绑定的BOM编码": "10"
+        }]
+    },
+    "attendances": {
+        "filename": "考勤记录导入模板.xlsx",
+        "sample": [{
+            "工作日期": "2026-09-24", "工号": "hulx", "排班班次": "早班",
+            "是否节假日": "否", "实际签到": "2026-09-24 08:00:00", "实际签退": "2026-09-24 17:00:00",
+            "实际工时": 8.0, "出勤类型": "正常", "考勤状态": "正常", "核算加班(H)": 0.0
+        }]
+    }
+}
+
+REVERSE_HEADER_MAPPING = {
+    "materials": {
+        "material_code": "物料编码", "material_desc": "物料描述", "material_group_code": "物料组",
+        "base_uom": "基本单位", "plant_status": "特定工厂状态", "valid_from": "有效起始期",
+        "safety_stock": "安全库存", "default_storage_loc": "库存默认地点"
+    },
+    "production-orders": {
+        "order_code": "订单编号", "material_code": "物料编码", "target_quantity": "目标数量",
+        "plan_start_time": "计划开始时间", "plan_end_time": "计划结束时间", "status": "状态",
+        "routing_code": "工艺路线"
+    },
+    "confirmations": {
+        "order_code": "生产单号", "material_code": "品号", "work_center_code": "工作中心",
+        "batch_no": "生产批次号", "yield_quantity": "合格品数", "scrap_quantity": "报废品数",
+        "confirmation_no": "lbl_fb_id", "plant": "工厂", "exec_datetime": "报工日期",
+        "process_code": "工序ID", "process_name": "工序名称", "employee_id": "更新人编号",
+        "employee_name": "更新人名称", "work_hours": "报工工时"
+    },
+    "employees": {
+        "employee_id": "工号", "name": "姓名", "workshop_code": "车间",
+        "health_cert_status": "健康证状态", "work_cert_status": "上岗证状态", "skills": "技能矩阵"
+    },
+    "workshops": {
+        "workshop_code": "车间编码", "workshop_name": "车间名称", "sap_work_center_code": "SAP工作中心对照",
+        "manager_id": "负责人ID"
+    },
+    "defect-reasons": {
+        "defect_code": "本地不良代码", "sap_defect_code": "SAP不良代码", "defect_name": "不良名称",
+        "description": "描述"
+    },
+    "material-groups": {
+        "group_code": "本地物料组编码", "sap_group_code": "SAP对照码", "group_name": "物料组名称"
+    },
+    "routings": {
+        "routing_code": "路线编码", "sap_routing_code": "SAP对照码", "routing_name": "路线名称",
+        "material_code": "关联物料", "version": "版本"
+    },
+    "processes": {
+        "process_code": "工序代码", "process_name": "工序名称", "required_skills": "所需技能",
+        "standard_time_sec": "标准工时(秒)", "bound_bom_code": "绑定的BOM编码"
+    },
+    "boms": {
+        "bom_code": "BOM编码", "product_code": "父件编码", "component_code": "子件编码",
+        "quantity": "用量", "alt_group": "替代物料同行号"
+    },
+    "attendances": {
+        "attendance_date": "工作日期", "employee_id": "工号", "shift_code": "排班班次",
+        "is_holiday": "是否节假日", "actual_punch_in": "实际签到", "actual_punch_out": "实际签退",
+        "actual_work_hours": "实际工时", "attendance_type": "出勤类型", "attendance_status": "考勤状态",
+        "calculated_overtime": "核算加班(H)"
+    }
+}
+
 @data_bp.route("/confirmations", methods=["GET"])
 def get_confirmations():
     db = SessionLocal()
@@ -315,23 +453,27 @@ def export_data(tab_name):
     db = SessionLocal()
     try:
         if is_template:
-            data = []
+            if tab_name in TEMPLATE_CONFIG:
+                cfg = TEMPLATE_CONFIG[tab_name]
+                df = pd.DataFrame(cfg['sample'])
+                filename = cfg.get('filename', f"{tab_name}_template.xlsx")
+            else:
+                cols = [c.name for c in model.__table__.columns if c.name not in ['id', 'created_at']]
+                df = pd.DataFrame(columns=cols)
+                filename = f"{tab_name}_template.xlsx"
         else:
             items = db.query(model).all()
             data = [clean_dict(item.__dict__) for item in items]
-        
-        if not data:
-            cols = [c.name for c in model.__table__.columns if c.name not in ['id', 'created_at']]
-            df = pd.DataFrame(columns=cols)
-        else:
             df = pd.DataFrame(data)
+            if tab_name in REVERSE_HEADER_MAPPING:
+                df.rename(columns=REVERSE_HEADER_MAPPING[tab_name], inplace=True)
+            filename = f"{tab_name}.xlsx"
             
         out = io.BytesIO()
         with pd.ExcelWriter(out, engine='openpyxl') as writer:
             df.to_excel(writer, index=False)
             
         out.seek(0)
-        filename = f"{tab_name}_template.xlsx" if is_template else f"{tab_name}.xlsx"
         return send_file(out, download_name=filename, as_attachment=True)
     finally:
         db.close()
