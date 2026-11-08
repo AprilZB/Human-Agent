@@ -523,21 +523,86 @@ def import_data(tab_name):
         
         records = df.to_dict(orient='records')
         
-        # Convert Timestamps to string and JSON strings to dict
+        # Determine column types from model
+        bool_cols = {c.name for c in model.__table__.columns if str(c.type).upper().startswith('BOOL')}
+        string_cols = {c.name for c in model.__table__.columns if 'VARCHAR' in str(c.type).upper() or 'TEXT' in str(c.type).upper() or 'STRING' in str(c.type).upper()}
+        datetime_cols = {c.name for c in model.__table__.columns if 'DATETIME' in str(c.type).upper() or 'TIMESTAMP' in str(c.type).upper()}
+        date_cols = {c.name for c in model.__table__.columns if str(c.type).upper().startswith('DATE')}
+
+        import datetime
+
+        # Universal value sanitizer
         for rec in records:
-            for k, v in rec.items():
+            # Extract date reference if available
+            date_ref = None
+            for d_key in ['attendance_date', 'exec_datetime', 'valid_from']:
+                if rec.get(d_key):
+                    d_val = rec[d_key]
+                    if isinstance(d_val, (pd.Timestamp, datetime.date, datetime.datetime)):
+                        date_ref = d_val.strftime('%Y-%m-%d')
+                    elif str(d_val).strip() and str(d_val).strip() not in ['/', '-']:
+                        date_ref = str(d_val).split(' ')[0].strip()
+                    break
+
+            for k, v in list(rec.items()):
+                # Handle NaN / null placeholders
                 if isinstance(v, float) and math.isnan(v):
                     rec[k] = None
-                elif isinstance(v, pd.Timestamp):
-                    rec[k] = v.strftime('%Y-%m-%d %H:%M:%S')
-                elif isinstance(v, (int, float)) and k == 'version':
-                    rec[k] = str(v)
+                elif v in ['/', '-', 'NaN', 'nan', 'NULL', 'null', '']:
+                    rec[k] = None
+                    
+                # Handle Booleans (e.g. 是/否, Y/N, True/False)
+                elif k in bool_cols:
+                    if isinstance(v, str):
+                        rec[k] = True if v.strip() in ['是', 'Y', 'y', 'true', 'True', '1'] else False
+                    else:
+                        rec[k] = bool(v)
+                        
+                # Handle Time/Datetime
+                elif isinstance(v, datetime.time):
+                    if date_ref:
+                        rec[k] = f"{date_ref} {v.strftime('%H:%M:%S')}"
+                    else:
+                        rec[k] = None
+                elif isinstance(v, (pd.Timestamp, datetime.datetime)):
+                    if k in date_cols:
+                        rec[k] = v.strftime('%Y-%m-%d')
+                    else:
+                        rec[k] = v.strftime('%Y-%m-%d %H:%M:%S')
+                elif isinstance(v, datetime.date):
+                    rec[k] = v.strftime('%Y-%m-%d')
+                    
+                # Handle Strings (e.g. integer employee_id 404201195 -> '404201195')
+                elif k in string_cols:
+                    if isinstance(v, (int, float)):
+                        if isinstance(v, float) and v.is_integer():
+                            rec[k] = str(int(v))
+                        else:
+                            rec[k] = str(v)
+                    elif isinstance(v, str):
+                        rec[k] = v.strip()
+                        
+                # Handle JSON strings
                 elif isinstance(v, str) and (v.strip().startswith('{') or v.strip().startswith('[')):
                     import json
                     try:
                         rec[k] = json.loads(v)
                     except:
                         pass
+                        
+            # Auto-calculate actual_work_hours if attendances and missing
+            if tab_name == 'attendances':
+                if rec.get('actual_work_hours') is None or rec.get('actual_work_hours') == 0:
+                    pin = rec.get('actual_punch_in')
+                    pout = rec.get('actual_punch_out')
+                    if pin and pout:
+                        try:
+                            t1 = datetime.datetime.fromisoformat(str(pin))
+                            t2 = datetime.datetime.fromisoformat(str(pout))
+                            hrs = round((t2 - t1).total_seconds() / 3600.0, 2)
+                            rec['actual_work_hours'] = max(0, hrs)
+                        except:
+                            pass
                         
         pk_names = model.__table__.primary_key.columns.keys()
 
@@ -561,8 +626,16 @@ def import_data(tab_name):
             records = list(emp_dict.values())
         elif len(pk_names) == 1 and pk_names[0] == 'id':
             # For tables with auto-increment 'id' (e.g. confirmations, attendances)
-            # Deduplicate by business key if present (e.g. confirmation_no), else keep all
-            if any(r.get('confirmation_no') for r in records):
+            if tab_name == 'attendances':
+                agg_dict = {}
+                for rec in records:
+                    key = (rec.get('attendance_date'), rec.get('employee_id'))
+                    if all(k is not None for k in key):
+                        agg_dict[key] = rec
+                    else:
+                        agg_dict[id(rec)] = rec
+                records = list(agg_dict.values())
+            elif any(r.get('confirmation_no') for r in records):
                 agg_dict = {}
                 for rec in records:
                     c_no = rec.get('confirmation_no')
@@ -591,7 +664,13 @@ def import_data(tab_name):
                     with db.begin_nested():
                         existing = None
                         if len(pk_names) == 1 and pk_names[0] == 'id':
-                            if rec.get('confirmation_no'):
+                            if tab_name == 'attendances':
+                                if rec.get('attendance_date') and rec.get('employee_id'):
+                                    existing = db.query(model).filter_by(
+                                        attendance_date=rec['attendance_date'],
+                                        employee_id=rec['employee_id']
+                                    ).first()
+                            elif rec.get('confirmation_no'):
                                 existing = db.query(model).filter_by(confirmation_no=rec.get('confirmation_no')).first()
                             elif rec.get('order_code') and rec.get('batch_no'):
                                 existing = db.query(model).filter_by(
