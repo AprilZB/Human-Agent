@@ -101,47 +101,32 @@
             </el-col>
           </el-row>
 
-          <!-- 中部：对接配置与过滤参数表单 -->
+          <!-- 中部：对接连接与同步配置表单 -->
           <el-card shadow="never" class="mb-16">
             <template #header>
               <div class="card-header-flex">
-                <span class="font-bold">APHR 接口连接与过滤配置</span>
+                <span class="font-bold">APHR 接口连接与同步配置</span>
                 <el-button type="primary" size="small" :loading="saveLoading" @click="handleSaveConfig(true)">保存配置</el-button>
               </div>
             </template>
-            <el-form :model="aphrForm" label-width="140px">
+            <el-form :model="aphrForm" label-width="120px">
               <el-row :gutter="20">
                 <el-col :span="8">
                   <el-form-item label="APHR 接口地址">
                     <el-input v-model="aphrForm.APHR_BASE_URL" placeholder="http://10.11.100.151:8092" />
                   </el-form-item>
                 </el-col>
-                <el-col :span="8">
+                <el-col :span="5">
                   <el-form-item label="接口账号">
                     <el-input v-model="aphrForm.APHR_USERNAME" placeholder="admin" />
                   </el-form-item>
                 </el-col>
-                <el-col :span="8">
+                <el-col :span="5">
                   <el-form-item label="接口密钥">
                     <el-input v-model="aphrForm.APHR_PASSWORD" type="password" show-password placeholder="admin123" />
                   </el-form-item>
                 </el-col>
-              </el-row>
-              <el-row :gutter="20">
-                <el-col :span="8">
-                  <el-form-item label="同步部门范围">
-                    <el-select v-model="aphrForm.APHR_DEPT_ID" placeholder="请选择部门" style="width: 100%">
-                      <el-option label="百通生产部 (部门ID: 38 - 60人)" value="38" />
-                      <el-option label="全公司所有部门 (ALL - 4,200+人)" value="ALL" />
-                    </el-select>
-                  </el-form-item>
-                </el-col>
-                <el-col :span="8">
-                  <el-form-item label="默认车间对应">
-                    <el-input v-model="aphrForm.APHR_DEFAULT_WORKSHOP" placeholder="中包车间" />
-                  </el-form-item>
-                </el-col>
-                <el-col :span="8">
+                <el-col :span="6">
                   <el-form-item label="定时同步周期">
                     <el-select v-model="aphrForm.APHR_SYNC_INTERVAL_MIN" placeholder="选择周期" style="width: 100%">
                       <el-option label="每 15 分钟" value="15" />
@@ -173,7 +158,7 @@
               <el-table-column prop="name" label="姓名" width="120" fixed />
               <el-table-column prop="workshop_code" label="所属车间" width="130">
                 <template #default="scope">
-                  <el-tag size="small" type="success">{{ scope.row.workshop_code || '未设置' }}</el-tag>
+                  <el-tag size="small" :type="scope.row.workshop_code ? 'success' : 'info'">{{ scope.row.workshop_code || '未设置' }}</el-tag>
                 </template>
               </el-table-column>
               <el-table-column prop="skills" label="技能矩阵">
@@ -299,8 +284,6 @@ const aphrForm = reactive({
   APHR_BASE_URL: 'http://10.11.100.151:8092',
   APHR_USERNAME: 'admin',
   APHR_PASSWORD: 'admin123',
-  APHR_DEPT_ID: '38',
-  APHR_DEFAULT_WORKSHOP: '中包车间',
   APHR_SYNC_ENABLED: true,
   APHR_SYNC_INTERVAL_MIN: '60',
   APHR_LAST_SYNC_TIME: '',
@@ -318,7 +301,6 @@ const connStatus = reactive({
   success: false,
   latency_ms: 0,
   total_employees: 0,
-  dept_38_employees: 0,
   error: ''
 })
 
@@ -336,8 +318,6 @@ const fetchAphrConfig = async () => {
     aphrForm.APHR_BASE_URL = cfg.APHR_BASE_URL || 'http://10.11.100.151:8092'
     aphrForm.APHR_USERNAME = cfg.APHR_USERNAME || 'admin'
     aphrForm.APHR_PASSWORD = cfg.APHR_PASSWORD || 'admin123'
-    aphrForm.APHR_DEPT_ID = cfg.APHR_DEPT_ID || '38'
-    aphrForm.APHR_DEFAULT_WORKSHOP = cfg.APHR_DEFAULT_WORKSHOP || '中包车间'
     aphrForm.APHR_SYNC_ENABLED = String(cfg.APHR_SYNC_ENABLED).toLowerCase() === 'true'
     aphrForm.APHR_SYNC_INTERVAL_MIN = String(cfg.APHR_SYNC_INTERVAL_MIN || '60')
     aphrForm.APHR_LAST_SYNC_TIME = cfg.APHR_LAST_SYNC_TIME || ''
@@ -368,7 +348,6 @@ const handleTestConnection = async () => {
     connStatus.success = res.data.success
     connStatus.latency_ms = res.data.latency_ms || 0
     connStatus.total_employees = res.data.total_employees || 0
-    connStatus.dept_38_employees = res.data.dept_38_employees || 0
     ElNotification({
       title: 'APHR 连接测试成功',
       message: `连通正常 (延迟: ${connStatus.latency_ms}ms)，员工总数: ${connStatus.total_employees} 人`,
@@ -412,9 +391,7 @@ const handleManualSync = async () => {
     const res = await axios.post('/api/v1/aphr/sync', {
       APHR_BASE_URL: aphrForm.APHR_BASE_URL,
       APHR_USERNAME: aphrForm.APHR_USERNAME,
-      APHR_PASSWORD: aphrForm.APHR_PASSWORD,
-      APHR_DEPT_ID: aphrForm.APHR_DEPT_ID,
-      APHR_DEFAULT_WORKSHOP: aphrForm.APHR_DEFAULT_WORKSHOP
+      APHR_PASSWORD: aphrForm.APHR_PASSWORD
     })
     lastReport.value = res.data
     aphrForm.APHR_LAST_SYNC_TIME = res.data.sync_time
