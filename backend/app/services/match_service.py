@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+from datetime import datetime, timedelta
 from app.models.production import BizWorkOrder, TaskPersonnelAssignment, BizProductionOrder, BizEmployeeAttendance, BizEmployeeDailyGrade, BaseProcess
 from app.models.master_data import BaseEmployee
 from app.models.system import SysConfig
@@ -30,7 +31,7 @@ async def run_intelligent_matching(db: Session, work_order_code: str):
     max_ot_config = db.query(SysConfig).filter(SysConfig.config_key == 'MAX_OVERTIME_HOURS_PER_MONTH').first()
     max_ot = float(max_ot_config.config_value) if max_ot_config else 36.0
 
-    # 2. 从数据库获取中包车间真实候选员工
+    # 2. 从数据库获取中包车间候选员工
     employees = db.query(BaseEmployee).filter_by(workshop_code='中包车间').all()
     if not employees:
         employees = db.query(BaseEmployee).all()
@@ -43,18 +44,20 @@ async def run_intelligent_matching(db: Session, work_order_code: str):
             BizEmployeeAttendance.attendance_date == target_date
         ).first()
 
-        # 当月累计加班
+        # 当月累计加班时长
         total_ot = db.query(func.sum(BizEmployeeAttendance.calculated_overtime)).filter(
             BizEmployeeAttendance.employee_id == emp.employee_id,
             BizEmployeeAttendance.attendance_date.like(f"{target_month}%")
         ).scalar() or 0.0
 
-        # 当日绩效考评得分
-        grade = db.query(BizEmployeeDailyGrade).filter(
+        # 注意：派工在早班开工时进行，当天的考评在下班或次日才录入
+        # 故取前一工作日或最近一次的历史绩效考评表现
+        prev_grade = db.query(BizEmployeeDailyGrade).filter(
             BizEmployeeDailyGrade.employee_id == emp.employee_id,
-            BizEmployeeDailyGrade.grade_date == target_date
-        ).first()
-        daily_score = grade.score if grade and grade.score else 86
+            BizEmployeeDailyGrade.grade_date < target_date
+        ).order_by(BizEmployeeDailyGrade.grade_date.desc()).first()
+
+        recent_score = prev_grade.score if prev_grade and prev_grade.score else 86
 
         emp_skills = emp.skills or []
         if isinstance(emp_skills, str):
@@ -70,18 +73,18 @@ async def run_intelligent_matching(db: Session, work_order_code: str):
             "overtime_hours": float(total_ot),
             "shift_status": shift_status,
             "leave": is_leave,
-            "daily_score": daily_score,
+            "recent_score": recent_score,
             "health_cert": emp.health_cert_status,
             "work_cert": emp.work_cert_status
         })
 
-    # 3. 规则引擎：硬过滤 (Hard Constraints)
+    # 3. 规则引擎：硬约束过滤 (Hard Constraints)
     qualified_candidates = []
     for c in candidates:
         # A. 请假过滤
         if c['leave']:
             continue
-        # B. 技能匹配（若工序有技能要求，需具备对应技能或中包技能）
+        # B. 技能匹配（具备工序技能认证或中包技能）
         if required_skills:
             has_skill = False
             for req in required_skills:
@@ -107,30 +110,32 @@ async def run_intelligent_matching(db: Session, work_order_code: str):
         raise ValueError("当日无在岗符合条件的候选员工")
 
     # 4. 排序算法：
-    # 优先高绩效得分（daily_score 降序），次优先低加班时长（避免疲劳，overtime 升序）
-    qualified_candidates.sort(key=lambda x: (-x['daily_score'], x['overtime_hours']))
+    # 优先高历史绩效得分（recent_score 降序），次优先低加班时长（防疲劳 overtime 升序）
+    qualified_candidates.sort(key=lambda x: (-x['recent_score'], x['overtime_hours']))
 
     # 取所需人数 (默认为 wo.required_count，一般为 2 人)
     required_count = wo.required_count if wo.required_count and wo.required_count > 0 else 2
     selected = qualified_candidates[:required_count]
 
-    # 5. 生成人性化推荐文案并入库
+    # 5. 生成专业推荐文案并入库
     assignments = []
     for candidate in selected:
-        matched_skill_name = "PI中包装" if any("中包" in s for s in candidate['skills']) else (candidate['skills'][0] if candidate['skills'] else "包装通用")
-        default_reason = f"{candidate['name']}：具备【{matched_skill_name}】技能认证，考勤在岗正常，9月累计加班{candidate['overtime_hours']}H(合规)，绩效考评{candidate['daily_score']}分优秀。"
+        matched_skill_name = "PI中包装" if any("中包" in s for s in candidate['skills']) else (candidate['skills'][0] if candidate['skills'] else "中包装工序")
+        grade_desc = f"前日考评{candidate['recent_score']}分表现稳定" if candidate['recent_score'] >= 86 else f"前日考评{candidate['recent_score']}分"
+        default_reason = f"{candidate['name']}：具备【{matched_skill_name}】工序技能认证，今日白班已按时打卡在岗，9月累计加班{candidate['overtime_hours']}H(合规)，{grade_desc}。"
         
+        reason = None
         try:
             reason = await llm_client.generate_recommendation_reason(work_order_code, process_name, candidate)
-            if not reason or "暂不可用" in reason or "502" in reason or "自动推荐。(" in reason:
-                reason = default_reason
         except Exception:
-            reason = default_reason
+            pass
+
+        final_reason = reason if reason else default_reason
 
         assignment = TaskPersonnelAssignment(
             work_order_code=work_order_code,
             employee_id=candidate['emp_id'],
-            recommend_reason=reason,
+            recommend_reason=final_reason,
             status='AI_RECOMMENDED'
         )
         db.add(assignment)
