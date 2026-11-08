@@ -1,10 +1,10 @@
-﻿<template>
+<template>
   <div class="grading-container">
     <el-card shadow="hover" class="grading-card">
       <template #header>
         <div class="flex-between">
-          <span>员工日考评</span>
-          <div>
+          <span style="font-weight: bold; font-size: 16px;">员工日考评</span>
+          <div class="header-actions">
             <el-date-picker
               v-model="selectedMonth"
               type="month"
@@ -12,8 +12,21 @@
               value-format="YYYY-MM"
               @change="fetchData"
               class="mr-10"
+              style="width: 140px;"
             />
-            <el-button type="primary" @click="fetchData">刷新</el-button>
+            <el-button type="primary" @click="fetchData" class="mr-10">刷新</el-button>
+            <el-button type="warning" plain class="mr-10" @click="downloadTemplate">下载导入模板</el-button>
+            <el-upload
+              :action="'/api/v1/report/grading/import?month=' + selectedMonth"
+              :show-file-list="false"
+              :before-upload="beforeImport"
+              :on-success="handleImportSuccess"
+              :on-error="handleImportError"
+              class="mr-10 inline-upload"
+            >
+              <el-button type="success" plain>Excel 导入</el-button>
+            </el-upload>
+            <el-button type="info" plain @click="handleExport">Excel 导出</el-button>
           </div>
         </div>
       </template>
@@ -27,6 +40,7 @@
         height="100%"
         class="excel-table"
       >
+        <el-table-column prop="employee_id" label="工号" width="105" fixed />
         <el-table-column prop="employee_name" label="姓名" width="80" fixed />
         
         <el-table-column 
@@ -65,7 +79,8 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox, ElLoading } from 'element-plus'
+import { useUserStore } from '@/store/user'
 
 const selectedMonth = ref('2026-09')
 const employees = ref<any[]>([])
@@ -82,14 +97,13 @@ const daysInMonth = computed(() => {
   return Array.from({ length: days }, (_, i) => i + 1)
 })
 
-import { useUserStore } from '@/store/user'
 const fetchData = async () => {
   loading.value = true
   const userStore = useUserStore()
   try {
     let url = '/api/v1/report/grading?month=' + selectedMonth.value
     if (userStore.userInfo?.workshop_code) {
-      url += '&workshop_code=' + userStore.userInfo.workshop_code
+      url += '&workshop_code=' + encodeURIComponent(userStore.userInfo.workshop_code)
     }
     const res = await axios.get(url)
     employees.value = res.data
@@ -98,6 +112,69 @@ const fetchData = async () => {
   } finally {
     loading.value = false
   }
+}
+
+let importLoadingInstance: any = null
+
+const beforeImport = () => {
+  importLoadingInstance = ElLoading.service({
+    lock: true,
+    text: '正在读取考评文档并导入中，请稍候...',
+    background: 'rgba(0, 0, 0, 0.7)',
+  })
+  return true
+}
+
+const handleImportSuccess = (res: any) => {
+  if (importLoadingInstance) {
+    importLoadingInstance.close()
+  }
+  if (res.error) {
+    ElMessage.error(res.error)
+  } else {
+    ElMessageBox.alert(
+      `文档读取考评数: ${res.total_read || 0}<br/>` +
+      `成功导入数: <span style="color: green">${res.success || 0}</span><br/>` +
+      `失败数量: <span style="color: red">${res.fail || 0}</span>` + 
+      (res.errors && res.errors.length > 0 ? `<br/><br/><span style="color: gray; font-size: 12px">错误详情 (部分): ${res.errors[0]}</span>` : ''),
+      '考评导入结果',
+      {
+        dangerouslyUseHTMLString: true,
+        type: res.fail > 0 ? 'warning' : 'success'
+      }
+    ).then(() => {
+      fetchData()
+    }).catch(() => {
+      fetchData()
+    })
+  }
+}
+
+const handleImportError = (err: any) => {
+  if (importLoadingInstance) {
+    importLoadingInstance.close()
+  }
+  let errorMsg = '网络或服务器异常，导入失败'
+  try {
+    if (err && err.message) {
+      const parsed = JSON.parse(err.message)
+      if (parsed.error) errorMsg = parsed.error
+    }
+  } catch (e) {
+    if (typeof err === 'string') errorMsg = err
+  }
+  ElMessageBox.alert(errorMsg, '导入失败提示', {
+    type: 'error',
+    confirmButtonText: '确定'
+  })
+}
+
+const downloadTemplate = () => {
+  window.open('/api/v1/report/grading/template?month=' + selectedMonth.value)
+}
+
+const handleExport = () => {
+  window.open('/api/v1/report/grading/export?month=' + selectedMonth.value)
 }
 
 const getGrade = (row: any, day: number) => {
@@ -149,6 +226,8 @@ onMounted(() => {
 
 <style scoped>
 .flex-between { display: flex; justify-content: space-between; align-items: center; }
+.header-actions { display: flex; align-items: center; }
+.inline-upload { display: inline-flex; vertical-align: middle; }
 .mr-10 { margin-right: 10px; }
 .grade-cell {
   cursor: pointer;
@@ -163,6 +242,7 @@ onMounted(() => {
 .color-success { color: #67C23A; }
 .color-primary { color: #409EFF; }
 .color-info { color: #909399; }
+.color-muted { color: #C0C4CC; }
 .fw-bold { font-weight: bold; }
 .quick-grade-btns {
   display: flex;
