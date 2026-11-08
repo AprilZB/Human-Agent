@@ -6,6 +6,45 @@ from sqlalchemy import or_
 
 data_bp = Blueprint('data', __name__)
 
+TAB_HEADER_OVERRIDE = {
+    "routings": {
+        "路线编码": "routing_code",
+        "SAP对照码": "sap_routing_code",
+        "sap对照码": "sap_routing_code",
+        "路线名称": "routing_name",
+        "关联物料": "material_code",
+        "版本": "version",
+    },
+    "confirmations": {
+        "生产单号": "order_code",
+        "生产批次号": "batch_no",
+        "品号": "material_code",
+        "工作中心": "work_center_code",
+        "合格品数": "yield_quantity",
+        "报废品数": "scrap_quantity",
+        "不合格数": "scrap_quantity",
+        "工序ID": "process_code",
+        "工序id": "process_code",
+        "工序名称": "process_name",
+        "更新人编号": "employee_id",
+        "创建者": "employee_id",
+        "更新人名称": "employee_name",
+        "建立者用户.1": "employee_name",
+        "报工工时": "work_hours",
+        "lbl_fb_id": "confirmation_no",
+        "报工日期": "exec_datetime",
+        "工厂": "plant",
+        "工厂ID": "plant",
+        "工厂id": "plant",
+    },
+    "material-groups": {
+        "本地物料组编码": "group_code",
+        "SAP对照码": "sap_group_code",
+        "sap对照码": "sap_group_code",
+        "物料组名称": "group_name",
+    }
+}
+
 HEADER_MAPPING = {
     "生产订单号": "order_code",
     "订单编号": "order_code",
@@ -49,8 +88,9 @@ HEADER_MAPPING = {
     "上岗证状态": "work_cert_status",
     "健康证状态/有效期": "health_cert_status",
     "上岗证状态/有效期": "work_cert_status",
-    "技能矩阵": "skills"
-,
+    "技能矩阵": "skills",
+
+    # BOM与工艺
     "BOM编码": "bom_code",
     "父件编码": "product_code",
     "子件编码": "component_code",
@@ -81,7 +121,12 @@ HEADER_MAPPING = {
     "物料组名称": "group_name",
     "车间编码": "workshop_code",
     "车间名称": "workshop_name",
-    "SAP工作中心对照": "sap_work_center_code"}
+    "SAP工作中心对照": "sap_work_center_code",
+    "路线编码": "routing_code",
+    "路线名称": "routing_name",
+    "关联物料": "material_code",
+    "版本": "version"
+}
 
 
 def paginate(query):
@@ -175,6 +220,9 @@ def get_material_groups():
     db = SessionLocal()
     try:
         q = db.query(md.BaseMaterialGroup)
+        keyword = request.args.get('keyword', '')
+        if keyword:
+            q = q.filter(or_(md.BaseMaterialGroup.group_code.like(f"%{keyword}%"), md.BaseMaterialGroup.group_name.like(f"%{keyword}%")))
         res = paginate(q)
         res['records'] = [clean_dict(r) for r in res['records']]
         return jsonify(res)
@@ -186,6 +234,9 @@ def get_routings():
     db = SessionLocal()
     try:
         q = db.query(md.BaseRouting)
+        keyword = request.args.get('keyword', '')
+        if keyword:
+            q = q.filter(or_(md.BaseRouting.routing_code.like(f"%{keyword}%"), md.BaseRouting.routing_name.like(f"%{keyword}%"), md.BaseRouting.material_code.like(f"%{keyword}%")))
         res = paginate(q)
         res['records'] = [clean_dict(r) for r in res['records']]
         return jsonify(res)
@@ -240,7 +291,13 @@ def get_confirmations():
         q = db.query(prod.BizProductionConfirmation)
         keyword = request.args.get('keyword', '')
         if keyword:
-            q = q.filter(or_(prod.BizProductionConfirmation.order_code.like(f"%{keyword}%"), prod.BizProductionConfirmation.material_code.like(f"%{keyword}%")))
+            q = q.filter(or_(
+                prod.BizProductionConfirmation.order_code.like(f"%{keyword}%"),
+                prod.BizProductionConfirmation.material_code.like(f"%{keyword}%"),
+                prod.BizProductionConfirmation.confirmation_no.like(f"%{keyword}%"),
+                prod.BizProductionConfirmation.employee_name.like(f"%{keyword}%"),
+                prod.BizProductionConfirmation.process_name.like(f"%{keyword}%")
+            ))
         res = paginate(q)
         res['records'] = [clean_dict(r) for r in res['records']]
         return jsonify(res)
@@ -267,8 +324,6 @@ def export_data(tab_name):
             cols = [c.name for c in model.__table__.columns if c.name not in ['id', 'created_at']]
             df = pd.DataFrame(columns=cols)
         else:
-            # Reorder columns to ensure id and created_at are at the end or removed if not wanted.
-            # But here we just use pandas defaults for data
             df = pd.DataFrame(data)
             
         out = io.BytesIO()
@@ -297,10 +352,18 @@ def import_data(tab_name):
         import math
         
         df = pd.read_excel(file)
-        # Rename columns based on mapping if they match
+        
+        # Apply tab-specific header override first
+        if tab_name in TAB_HEADER_OVERRIDE:
+            df.rename(columns=TAB_HEADER_OVERRIDE[tab_name], inplace=True)
+            
+        # Rename columns based on global mapping
         df.rename(columns=HEADER_MAPPING, inplace=True)
-        # Also, lowercase the headers just in case they are english but capitalized
+        # Lowercase and strip
         df.columns = [str(c).strip().lower() for c in df.columns]
+        
+        # Deduplicate column names if any alias produced duplicates
+        df = df.loc[:, ~df.columns.duplicated(keep='first')]
         
         if 'id' in df.columns:
             df.drop(columns=['id'], inplace=True)
@@ -325,6 +388,8 @@ def import_data(tab_name):
                     rec[k] = None
                 elif isinstance(v, pd.Timestamp):
                     rec[k] = v.strftime('%Y-%m-%d %H:%M:%S')
+                elif isinstance(v, (int, float)) and k == 'version':
+                    rec[k] = str(v)
                 elif isinstance(v, str) and (v.strip().startswith('{') or v.strip().startswith('[')):
                     import json
                     try:
@@ -332,29 +397,41 @@ def import_data(tab_name):
                     except:
                         pass
                         
-        # Special aggregation for employees: they might have multiple rows for different skills
+        pk_names = model.__table__.primary_key.columns.keys()
+
+        # Deduplication / aggregation
         if tab_name == 'employees':
             emp_dict = {}
             for rec in records:
                 eid = rec.get('employee_id')
                 if eid not in emp_dict:
                     emp_dict[eid] = rec.copy()
-                    # Ensure skills is a list
                     skill = emp_dict[eid].get('skills')
                     if skill and isinstance(skill, str):
                         emp_dict[eid]['skills'] = [skill]
                     elif not skill:
                         emp_dict[eid]['skills'] = []
                 else:
-                    # Append skill
                     skill = rec.get('skills')
                     if skill and isinstance(skill, str):
                         if isinstance(emp_dict[eid].get('skills'), list):
                             emp_dict[eid]['skills'].append(skill)
             records = list(emp_dict.values())
+        elif len(pk_names) == 1 and pk_names[0] == 'id':
+            # For tables with auto-increment 'id' (e.g. confirmations, attendances)
+            # Deduplicate by business key if present (e.g. confirmation_no), else keep all
+            if any(r.get('confirmation_no') for r in records):
+                agg_dict = {}
+                for rec in records:
+                    c_no = rec.get('confirmation_no')
+                    if c_no:
+                        agg_dict[c_no] = rec
+                    else:
+                        agg_dict[id(rec)] = rec
+                records = list(agg_dict.values())
+            # Otherwise keep all records
         else:
-            # Generic aggregation to prevent duplicate PKs in the same excel file
-            pk_names = model.__table__.primary_key.columns.keys()
+            # Generic aggregation for composite or single primary keys
             agg_dict = {}
             for rec in records:
                 pval = tuple(rec.get(pk) for pk in pk_names)
@@ -370,9 +447,16 @@ def import_data(tab_name):
             for i, rec in enumerate(records):
                 try:
                     with db.begin_nested():
-                        pk_names = model.__table__.primary_key.columns.keys()
                         existing = None
-                        if all(rec.get(pk) is not None for pk in pk_names):
+                        if len(pk_names) == 1 and pk_names[0] == 'id':
+                            if rec.get('confirmation_no'):
+                                existing = db.query(model).filter_by(confirmation_no=rec.get('confirmation_no')).first()
+                            elif rec.get('order_code') and rec.get('batch_no'):
+                                existing = db.query(model).filter_by(
+                                    order_code=rec.get('order_code'),
+                                    batch_no=rec.get('batch_no')
+                                ).first()
+                        elif all(rec.get(pk) is not None for pk in pk_names):
                             filters = [getattr(model, pk) == rec.get(pk) for pk in pk_names]
                             existing = db.query(model).filter(*filters).first()
                         
@@ -393,7 +477,6 @@ def import_data(tab_name):
             # Auto-generate Work Orders for Production Orders to make them show up in dispatch
             if tab_name == 'production-orders':
                 import app.models.production as prod
-                # Get the first process as default
                 first_process = db.query(prod.BaseProcess).first()
                 if first_process:
                     for rec in records:
@@ -420,7 +503,7 @@ def import_data(tab_name):
                 "total_read": len(records),
                 "success": success,
                 "fail": fail,
-                "errors": errors[:10] # limit returned errors
+                "errors": errors[:10]
             })
         except Exception as e:
             db.rollback()

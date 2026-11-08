@@ -72,18 +72,21 @@
             <el-button type="info" plain @click="handleExport('confirmations')">Excel 导出</el-button>
           </div>
           <el-table :data="tableData.confirmations" v-loading="loading" border stripe height="calc(100vh - 300px)">
-            <el-table-column prop="id" label="ID" width="80" fixed />
-            <el-table-column prop="order_code" label="生产订单号" width="150" fixed />
-            <el-table-column prop="material_code" label="物料编码" width="120" />
-            <el-table-column prop="work_center_code" label="工作中心" width="120" />
-            <el-table-column prop="batch_no" label="批次号" width="120" />
-            <el-table-column prop="yield_quantity" label="产量" width="100" />
-            <el-table-column prop="scrap_quantity" label="报废数量" width="100" />
-            <el-table-column prop="confirmation_no" label="确认单号" width="120" />
-            <el-table-column prop="plant" label="工厂" width="100" />
-            <el-table-column prop="exec_datetime" label="执行时间" width="160" />
-            <el-table-column prop="cancel_flag" label="取消标志" width="100" />
-            <el-table-column prop="reversed_flag" label="冲销标志" width="100" />
+            <el-table-column prop="id" label="ID" width="70" fixed />
+            <el-table-column prop="order_code" label="生产订单号" width="140" fixed />
+            <el-table-column prop="material_code" label="物料编码" width="130" />
+            <el-table-column prop="process_name" label="工序名称" width="110" />
+            <el-table-column prop="work_center_code" label="工作中心" width="110" />
+            <el-table-column prop="employee_name" label="报工人" width="100" />
+            <el-table-column prop="work_hours" label="报工工时" width="90" />
+            <el-table-column prop="batch_no" label="批次号" width="110" />
+            <el-table-column prop="yield_quantity" label="产量" width="90" />
+            <el-table-column prop="scrap_quantity" label="报废数量" width="90" />
+            <el-table-column prop="confirmation_no" label="确认单号" width="150" />
+            <el-table-column prop="plant" label="工厂" width="90" />
+            <el-table-column prop="exec_datetime" label="执行时间" width="150" />
+            <el-table-column prop="cancel_flag" label="取消标志" width="90" />
+            <el-table-column prop="reversed_flag" label="冲销标志" width="90" />
           </el-table>
           <div class="pagination-container">
             <el-pagination v-model:current-page="pages.confirmations" :total="totals.confirmations" layout="total, prev, pager, next" @current-change="fetchData" />

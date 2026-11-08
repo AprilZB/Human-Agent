@@ -58,6 +58,11 @@ class BizProductionConfirmation(Base):
     exec_datetime = Column(DATETIME)
     cancel_flag = Column(Enum('Y', 'N'), default='N')
     reversed_flag = Column(Enum('Y', 'N'), default='N')
+    process_code = Column(String(50))
+    process_name = Column(String(100))
+    employee_id = Column(String(50))
+    employee_name = Column(String(100))
+    work_hours = Column(DECIMAL(10, 2))
     created_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"))
 
 

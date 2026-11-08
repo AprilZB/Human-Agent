@@ -35,7 +35,7 @@ class BaseTeam(Base):
 class BaseMaterialGroup(Base):
     __tablename__ = 'base_material_group'
     group_code = Column(String(50), primary_key=True)
-    sap_group_code = Column(String(50))
+    sap_group_code = Column(String(50), primary_key=True)
     group_name = Column(String(100), nullable=False)
     created_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"))
 
@@ -43,7 +43,7 @@ class BaseMaterial(Base):
     __tablename__ = 'base_material'
     material_code = Column(String(50), primary_key=True) # 物料编码
     material_desc = Column(String(255), nullable=False)  # 物料描述
-    material_group_code = Column(String(50), ForeignKey('base_material_group.group_code')) # 物料组
+    material_group_code = Column(String(50))             # 物料组
     
     plant_status = Column(String(50))                    # 特定工厂状态
     base_uom = Column(String(20), default='PCS')         # 基本计量单位
@@ -69,19 +69,17 @@ class BaseDefectReason(Base):
 class BaseRouting(Base):
     __tablename__ = 'base_routing'
     routing_code = Column(String(50), primary_key=True)
-    sap_routing_code = Column(String(50))
+    sap_routing_code = Column(String(50), primary_key=True)
     routing_name = Column(String(150))
-    material_code = Column(String(50), ForeignKey('base_material.material_code'))
+    material_code = Column(String(50), primary_key=True)
     version = Column(String(20), default='V1.0')
     is_active = Column(Boolean, default=True)
     created_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"))
-    
-    details = relationship("BaseRoutingDetail", backref="routing")
 
 class BaseRoutingDetail(Base):
     __tablename__ = 'base_routing_detail'
     id = Column(Integer, primary_key=True, autoincrement=True)
-    routing_code = Column(String(50), ForeignKey('base_routing.routing_code'))
+    routing_code = Column(String(50))
     step_seq = Column(Integer, nullable=False)
     process_code = Column(String(50), ForeignKey('base_process.process_code'))
     sap_operation_code = Column(String(50))
@@ -94,4 +92,3 @@ class BaseBom(Base):
     quantity = Column(Numeric(10, 2), nullable=False)
     alt_group = Column(String(50))
     created_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"))
-
