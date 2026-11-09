@@ -3,7 +3,23 @@
     <el-card shadow="hover" class="grading-card">
       <template #header>
         <div class="flex-between">
-          <span style="font-weight: bold; font-size: 16px;">员工日考评</span>
+          <div class="header-left">
+            <span class="page-title">员工日考评</span>
+            <div class="legend-bar">
+              <span class="legend-item">
+                <span class="legend-badge badge-today">今</span> 当天 ({{ todayLabel }})
+              </span>
+              <span class="legend-item">
+                <span class="legend-bar-indicator"></span> 当前周 ({{ currentWeekRangeLabel }})
+              </span>
+              <span class="legend-item">
+                <span class="legend-color-box bg-weekend"></span> 周末
+              </span>
+              <span class="legend-item">
+                <span class="legend-badge badge-holiday">休</span> 节假日
+              </span>
+            </div>
+          </div>
           <div class="header-actions">
             <el-date-picker
               v-model="selectedMonth"
@@ -46,10 +62,21 @@
         <el-table-column 
           v-for="day in daysInMonth" 
           :key="day" 
-          :label="String(day)" 
-          width="45"
+          width="48"
           align="center"
+          :class-name="getColumnClassName(day)"
+          :label-class-name="getHeaderClassName(day)"
         >
+          <template #header>
+            <div class="col-header-box" :title="getDateTooltip(day)">
+              <div class="header-day-num">{{ day }}</div>
+              <div class="header-weekday">{{ getWeekdayText(day) }}</div>
+              <span v-if="isToday(day)" class="header-badge badge-today">今</span>
+              <span v-else-if="getHolidayName(day)" class="header-badge badge-holiday">
+                {{ getHolidayName(day).length <= 2 ? getHolidayName(day) : '休' }}
+              </span>
+            </div>
+          </template>
           <template #default="scope">
             <div class="grade-cell" @click="openEdit(scope.row, day)">
               <span :class="getGradeClass(getGrade(scope.row, day))">
@@ -83,7 +110,11 @@
     <el-dialog title="快捷打分" v-model="dialogVisible" width="320px" center>
       <div style="text-align: center; margin-bottom: 16px;">
         <p style="font-size: 15px;"><strong>{{ currentRow?.employee_name }}</strong> ({{ currentRow?.employee_id }})</p>
-        <p style="color: #909399; font-size: 13px; margin-top: 4px;">{{ selectedMonth }}-{{ String(currentDay).padStart(2, '0') }}</p>
+        <p style="color: #909399; font-size: 13px; margin-top: 4px;">
+          {{ selectedMonth }}-{{ String(currentDay).padStart(2, '0') }} ({{ getWeekdayText(currentDay) }})
+          <span v-if="isToday(currentDay)" style="color: #409eff; font-weight: bold; margin-left: 6px;">[当天]</span>
+          <span v-else-if="getHolidayName(currentDay)" style="color: #f56c6c; font-weight: bold; margin-left: 6px;">[{{ getHolidayName(currentDay) }}]</span>
+        </p>
       </div>
       <div class="quick-grade-btns">
         <el-button type="danger" @click="saveGrade(-4)">-4 (极差)</el-button>
@@ -111,12 +142,161 @@ const dialogVisible = ref(false)
 const currentRow = ref<any>(null)
 const currentDay = ref<number>(1)
 
+const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+
+// 常见法定节假日配置
+const holidays: Record<string, string> = {
+  '2026-01-01': '元旦',
+  '2026-02-16': '除夕',
+  '2026-02-17': '春节',
+  '2026-02-18': '春节',
+  '2026-02-19': '春节',
+  '2026-02-20': '春节',
+  '2026-02-21': '春节',
+  '2026-02-22': '春节',
+  '2026-04-05': '清明节',
+  '2026-05-01': '劳动节',
+  '2026-05-02': '劳动节',
+  '2026-05-03': '劳动节',
+  '2026-06-19': '端午节',
+  '2026-09-25': '中秋节',
+  '2026-09-26': '中秋假',
+  '2026-09-27': '中秋假',
+  '2026-10-01': '国庆节',
+  '2026-10-02': '国庆假',
+  '2026-10-03': '国庆假',
+  '2026-10-04': '国庆假',
+  '2026-10-05': '国庆假',
+  '2026-10-06': '国庆假',
+  '2026-10-07': '国庆假',
+}
+
 const daysInMonth = computed(() => {
   if (!selectedMonth.value) return []
   const [year, month] = selectedMonth.value.split('-').map(Number)
   const days = new Date(year, month, 0).getDate()
   return Array.from({ length: days }, (_, i) => i + 1)
 })
+
+// 判断基准当天：若是2026-09则取业务基准日24日，若为当前系统所在月份则取真实今天，否则该月无当天
+const getTodayDay = () => {
+  if (!selectedMonth.value) return -1
+  const now = new Date()
+  const realYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  if (selectedMonth.value === '2026-09') {
+    return 24 // 系统演示与业务测试基准日 (2026-09-24)
+  } else if (selectedMonth.value === realYearMonth) {
+    return now.getDate()
+  }
+  return -1
+}
+
+const isToday = (day: number) => {
+  return day === getTodayDay()
+}
+
+// 计算当前周覆盖的日期（周一至周日）
+const currentWeekDays = computed(() => {
+  const targetDay = getTodayDay()
+  if (targetDay <= 0 || !selectedMonth.value) return new Set<number>()
+  const [year, month] = selectedMonth.value.split('-').map(Number)
+  const targetDate = new Date(year, month - 1, targetDay)
+  
+  const dayOfWeek = targetDate.getDay()
+  const diffToMonday = (dayOfWeek + 6) % 7
+  
+  const mondayDate = new Date(year, month - 1, targetDay - diffToMonday)
+  
+  const weekSet = new Set<number>()
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(mondayDate.getFullYear(), mondayDate.getMonth(), mondayDate.getDate() + i)
+    if (d.getFullYear() === year && d.getMonth() === month - 1) {
+      weekSet.add(d.getDate())
+    }
+  }
+  return weekSet
+})
+
+const isCurrentWeek = (day: number) => {
+  return currentWeekDays.value.has(day)
+}
+
+const getDayOfWeek = (day: number) => {
+  if (!selectedMonth.value) return 0
+  const [year, month] = selectedMonth.value.split('-').map(Number)
+  return new Date(year, month - 1, day).getDay()
+}
+
+const getWeekdayText = (day: number) => {
+  return weekDays[getDayOfWeek(day)]
+}
+
+const isWeekend = (day: number) => {
+  const dow = getDayOfWeek(day)
+  return dow === 0 || dow === 6
+}
+
+const getHolidayName = (day: number) => {
+  if (!selectedMonth.value) return ''
+  const dateStr = `${selectedMonth.value}-${String(day).padStart(2, '0')}`
+  return holidays[dateStr] || ''
+}
+
+const isHoliday = (day: number) => {
+  return !!getHolidayName(day)
+}
+
+const todayLabel = computed(() => {
+  const d = getTodayDay()
+  return d > 0 ? `${d}日` : '无'
+})
+
+const currentWeekRangeLabel = computed(() => {
+  if (currentWeekDays.value.size === 0) return '无'
+  const days = Array.from(currentWeekDays.value).sort((a, b) => a - b)
+  return `${days[0]}日 ~ ${days[days.length - 1]}日`
+})
+
+const getDateTooltip = (day: number) => {
+  const dateStr = `${selectedMonth.value}-${String(day).padStart(2, '0')}`
+  const weekday = getWeekdayText(day)
+  const holiday = getHolidayName(day)
+  let tip = `${dateStr} (${weekday})`
+  if (isToday(day)) tip += '【当天】'
+  if (holiday) tip += `【${holiday}】`
+  else if (isWeekend(day)) tip += '【周末】'
+  return tip
+}
+
+const getHeaderClassName = (day: number) => {
+  const classes: string[] = ['col-day-th']
+  if (isToday(day)) {
+    classes.push('th-today')
+  } else if (isHoliday(day)) {
+    classes.push('th-holiday')
+  } else if (isWeekend(day)) {
+    classes.push('th-weekend')
+  }
+  if (isCurrentWeek(day)) {
+    classes.push('th-current-week')
+  }
+  return classes.join(' ')
+}
+
+const getColumnClassName = (day: number) => {
+  const classes: string[] = ['col-day-td']
+  if (isToday(day)) {
+    classes.push('td-today')
+  } else if (isHoliday(day)) {
+    classes.push('td-holiday')
+  } else if (isWeekend(day)) {
+    classes.push('td-weekend')
+  }
+  if (isCurrentWeek(day)) {
+    classes.push('td-current-week')
+  }
+  return classes.join(' ')
+}
 
 const fetchData = async () => {
   loading.value = true
@@ -277,16 +457,197 @@ onMounted(() => {
 
 <style scoped>
 .flex-between { display: flex; justify-content: space-between; align-items: center; }
+.header-left { display: flex; align-items: center; flex-wrap: wrap; gap: 15px; }
+.page-title { font-weight: bold; font-size: 16px; color: #303133; }
 .header-actions { display: flex; align-items: center; }
 .inline-upload { display: inline-flex; vertical-align: middle; }
 .mr-10 { margin-right: 10px; }
+
+/* Legend Bar */
+.legend-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding: 3px 10px;
+  background-color: #f8f9fa;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #606266;
+}
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.legend-badge {
+  display: inline-block;
+  font-size: 10px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-weight: bold;
+}
+.legend-bar-indicator {
+  display: inline-block;
+  width: 14px;
+  height: 4px;
+  background-color: #409eff;
+  border-radius: 2px;
+}
+.legend-color-box {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+.bg-weekend {
+  background-color: #fdf6ec;
+  border: 1px solid #e6a23c;
+}
+
+/* Col Header Box */
+.col-header-box {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
+  cursor: default;
+  padding: 1px 0;
+}
+.header-day-num {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.header-weekday {
+  font-size: 11px;
+  line-height: 1.1;
+  margin-top: 2px;
+  color: #909399;
+}
+.header-badge {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  font-size: 9px;
+  line-height: 1;
+  padding: 1px 2px;
+  border-radius: 2px;
+  font-weight: bold;
+  transform: scale(0.85);
+}
+.badge-today {
+  background-color: #ffffff;
+  color: #409eff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+.badge-holiday {
+  background-color: #f56c6c;
+  color: #ffffff;
+  box-shadow: 0 1px 2px rgba(245, 108, 108, 0.4);
+}
+
+/* Table Header Custom Colors */
+:deep(.excel-table th.col-day-th) {
+  padding: 3px 0 !important;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+/* Today (Highest priority for th) */
+:deep(.excel-table th.th-today) {
+  background: #409eff !important;
+  color: #ffffff !important;
+  border-bottom: 2px solid #1d68c9 !important;
+}
+:deep(.excel-table th.th-today .header-day-num) {
+  color: #ffffff !important;
+  font-weight: 800;
+  font-size: 14px;
+}
+:deep(.excel-table th.th-today .header-weekday) {
+  color: #e6f1fc !important;
+  font-weight: 600;
+}
+
+/* Current Week (Top blue border for all days in week) */
+:deep(.excel-table th.th-current-week) {
+  border-top: 3px solid #409eff !important;
+}
+:deep(.excel-table th.th-current-week:not(.th-today):not(.th-holiday):not(.th-weekend)) {
+  background-color: #ecf5ff !important;
+}
+:deep(.excel-table th.th-current-week:not(.th-today):not(.th-holiday):not(.th-weekend) .header-weekday) {
+  color: #409eff !important;
+  font-weight: 600;
+}
+
+/* Holiday Header */
+:deep(.excel-table th.th-holiday:not(.th-today)) {
+  background-color: #fef0f0 !important;
+}
+:deep(.excel-table th.th-holiday:not(.th-today) .header-day-num) {
+  color: #f56c6c !important;
+  font-weight: 700;
+}
+:deep(.excel-table th.th-holiday:not(.th-today) .header-weekday) {
+  color: #f56c6c !important;
+  font-weight: 600;
+}
+
+/* Weekend Header */
+:deep(.excel-table th.th-weekend:not(.th-today):not(.th-holiday)) {
+  background-color: #fdf6ec !important;
+}
+:deep(.excel-table th.th-weekend:not(.th-today):not(.th-holiday) .header-day-num) {
+  color: #d97706 !important;
+  font-weight: 700;
+}
+:deep(.excel-table th.th-weekend:not(.th-today):not(.th-holiday) .header-weekday) {
+  color: #d97706 !important;
+  font-weight: 600;
+}
+
+/* Table Body Cells (td) Custom Colors */
+:deep(.excel-table td.col-day-td) {
+  padding: 3px 0 !important;
+}
+
+/* Today Column Cells */
+:deep(.excel-table td.td-today) {
+  background-color: #f0f7ff !important;
+  border-left: 1px solid #c6e2ff !important;
+  border-right: 1px solid #c6e2ff !important;
+}
+:deep(.excel-table td.td-today .grade-cell) {
+  font-weight: 600;
+}
+
+/* Current Week Cells */
+:deep(.excel-table td.td-current-week:not(.td-today):not(.td-holiday):not(.td-weekend)) {
+  background-color: #fafcff;
+}
+
+/* Holiday Cells */
+:deep(.excel-table td.td-holiday:not(.td-today)) {
+  background-color: #fef8f8;
+}
+
+/* Weekend Cells */
+:deep(.excel-table td.td-weekend:not(.td-today):not(.td-holiday)) {
+  background-color: #fdfcf9;
+}
+
 .grade-cell {
   cursor: pointer;
   padding: 5px;
   border-radius: 4px;
 }
 .grade-cell:hover {
-  background-color: #f5f7fa;
+  background-color: #e8f4ff;
 }
 .color-danger { color: #F56C6C; }
 .color-warning { color: #E6A23C; }
@@ -324,8 +685,5 @@ onMounted(() => {
   font-size: 12px;
   width: 100%;
   height: 100%;
-}
-.grade-cell {
-  padding: 2px;
 }
 </style>
