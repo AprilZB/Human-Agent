@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
 from app.core.database import SessionLocal
 from app.models.production import BizProductionOrder, BizWorkOrder, TaskPersonnelAssignment, BaseProcess
+from app.models.master_data import BaseEmployee
 from app.services.dispatch_service import decompose_production_order
 from app.services.match_service import run_intelligent_matching
 from app.services.dingtalk_service import batch_send_by_employee_ids
@@ -80,7 +81,16 @@ def get_work_orders():
                     assignments = loop.run_until_complete(run_intelligent_matching(db, wo.work_order_code))
                 except Exception as ex:
                     print(f"Auto-match fallback error: {ex}")
-            emps = [{"employee_id": a.employee_id, "reason": a.recommend_reason} for a in assignments]
+            emps = []
+            for a in assignments:
+                emp = db.query(BaseEmployee).filter(BaseEmployee.employee_id == a.employee_id).first()
+                emp_name = emp.name if emp and emp.name else a.employee_id
+                emps.append({
+                    "employee_id": a.employee_id,
+                    "employee_name": emp_name,
+                    "name": emp_name,
+                    "reason": a.recommend_reason
+                })
             
             result.append({
                 "work_order_code": wo.work_order_code,
@@ -98,6 +108,37 @@ def get_work_orders():
     finally:
         db.close()
 
+@production_bp.route("/workshop-employees", methods=["GET"])
+def get_workshop_employees():
+    db = SessionLocal()
+    try:
+        priority_ids = ['404201195', '404245800', '404245815', '404266762', '411265010', '404267095', '411265016', '411265017']
+        result = []
+        seen = set()
+        for pid in priority_ids:
+            e = db.query(BaseEmployee).filter(BaseEmployee.employee_id == pid).first()
+            if e and e.employee_id not in seen:
+                seen.add(e.employee_id)
+                result.append({
+                    "employee_id": e.employee_id,
+                    "name": e.name,
+                    "workshop_code": e.workshop_code,
+                    "skills": e.skills
+                })
+        emps = db.query(BaseEmployee).filter(BaseEmployee.workshop_code == '中包车间').limit(50).all()
+        for e in emps:
+            if e.employee_id not in seen:
+                seen.add(e.employee_id)
+                result.append({
+                    "employee_id": e.employee_id,
+                    "name": e.name,
+                    "workshop_code": e.workshop_code,
+                    "skills": e.skills
+                })
+        return jsonify(result)
+    finally:
+        db.close()
+
 @production_bp.route("/work-orders/<wo_code>/match", methods=["POST"])
 def intelligent_match(wo_code):
     db = SessionLocal()
@@ -109,7 +150,16 @@ def intelligent_match(wo_code):
         asyncio.set_event_loop(loop)
         assignments = loop.run_until_complete(run_intelligent_matching(db, wo_code))
         
-        result = [{"employee_id": a.employee_id, "reason": a.recommend_reason} for a in assignments]
+        result = []
+        for a in assignments:
+            emp = db.query(BaseEmployee).filter(BaseEmployee.employee_id == a.employee_id).first()
+            emp_name = emp.name if emp and emp.name else a.employee_id
+            result.append({
+                "employee_id": a.employee_id,
+                "employee_name": emp_name,
+                "name": emp_name,
+                "reason": a.recommend_reason
+            })
         return jsonify({"message": "Intelligent matching completed", "matched_count": len(result), "assignments": result})
     except ValueError as e:
         return jsonify({"detail": str(e)}), 400

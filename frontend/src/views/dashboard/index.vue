@@ -72,7 +72,7 @@
               <template #default="scope">
                 <el-tooltip v-for="emp in scope.row.assignments" :key="emp.employee_id" :content="emp.reason" placement="top">
                   <el-tag size="small" type="warning" class="mr-10 mb-10">
-                    {{ getEmpLabel(emp.employee_id) }}
+                    {{ getEmpName(emp) }}
                   </el-tag>
                 </el-tooltip>
                 <span v-if="!scope.row.assignments || scope.row.assignments.length === 0" class="text-muted">暂无预案</span>
@@ -112,7 +112,7 @@
             <el-table-column label="已派发人员">
               <template #default="scope">
                 <el-tag v-for="emp in scope.row.assignments" :key="emp.employee_id" size="small" type="success" class="mr-10 mb-10">
-                  {{ getEmpLabel(emp.employee_id) }}
+                  {{ getEmpName(emp) }}
                 </el-tag>
               </template>
             </el-table-column>
@@ -216,36 +216,81 @@ const currentWo = ref<any>(null)
 const selectedEmployees = ref<string[]>([])
 const aiReasons = ref<Record<string, string>>({})
 
-// 中包车间员工数据
+// 核心员工映射表 (工号 -> 姓名)
+const empNameMap = ref<Record<string, string>>({
+  '404201195': '王军',
+  '404245800': '刘端阳',
+  '404245815': '孙梦佳',
+  '404266762': '胡兰心',
+  '411265010': '李凌锋',
+  '404267095': '徐思山',
+  '411265016': '叶朝玲',
+  '411265017': '王子语',
+  '404256402': '张勃',
+  '404191243': '李丽丽'
+})
+
+// 中包车间员工数据 (用于调配穿梭框，只显示姓名，不显示工号)
 const allEmployees = ref([
-  { key: '404201195', label: '王军 (高级工 - 中包/装箱)' },
-  { key: '404245800', label: '刘端阳 (中级工 - 中包/装箱)' },
-  { key: '404245815', label: '孙梦佳 (中级工 - 中包/装箱)' },
-  { key: '404266762', label: '胡兰心 (中级工 - 中包/装箱)' },
-  { key: '411265010', label: '李凌锋 (高级工 - 中包/装箱)' }
+  { key: '404201195', label: '王军' },
+  { key: '404245800', label: '刘端阳' },
+  { key: '404245815', label: '孙梦佳' },
+  { key: '404266762', label: '胡兰心' },
+  { key: '411265010', label: '李凌锋' },
+  { key: '404267095', label: '徐思山' },
+  { key: '411265016', label: '叶朝玲' },
+  { key: '411265017', label: '王子语' }
 ])
+
+const getEmpName = (emp: any) => {
+  if (!emp) return ''
+  if (typeof emp === 'object') {
+    if (emp.name) return emp.name
+    if (emp.employee_name) return emp.employee_name
+    const eid = String(emp.employee_id || '')
+    return empNameMap.value[eid] || eid
+  }
+  const strId = String(emp)
+  return empNameMap.value[strId] || strId
+}
+
+const getEmpLabel = getEmpName
 
 const loadEmployees = async () => {
   try {
-    const res = await axios.get('/api/v1/data/employees?size=100')
-    if (res.data?.records && res.data.records.length > 0) {
-      allEmployees.value = res.data.records.map((e: any) => ({
+    const res = await axios.get('/api/v1/prod/workshop-employees')
+    if (Array.isArray(res.data) && res.data.length > 0) {
+      allEmployees.value = res.data.map((e: any) => ({
         key: String(e.employee_id),
-        label: `${e.name} (${Array.isArray(e.skills) ? e.skills.slice(0, 1).join(',') : (e.skills || '中包工')})`
+        label: e.name || String(e.employee_id)
       }))
+      res.data.forEach((e: any) => {
+        if (e.employee_id && e.name) {
+          empNameMap.value[String(e.employee_id)] = e.name
+        }
+      })
     }
   } catch (e) {}
 }
 
-const getEmpLabel = (empId: any) => {
-  const emp = allEmployees.value.find(e => String(e.key) === String(empId))
-  return emp ? emp.label : empId
+const syncEmpNameMap = (orders: any[]) => {
+  if (!Array.isArray(orders)) return
+  orders.forEach((wo: any) => {
+    (wo.assignments || []).forEach((a: any) => {
+      const eid = String(a.employee_id || '')
+      const name = a.name || a.employee_name
+      if (eid && name) {
+        empNameMap.value[eid] = name
+      }
+    })
+  })
 }
 
 const fetchPendingOrders = async () => {
   try {
     const res = await axios.get('/api/v1/prod/work-orders?date=' + pendingDate.value + '&status=PENDING,UNASSIGNED')
     pendingOrders.value = res.data
+    syncEmpNameMap(res.data)
   } catch (error) {
     ElMessage.error('拉取待派工单失败')
   }
@@ -260,6 +305,7 @@ const fetchDispatchedOrders = async () => {
     }
     const res = await axios.get(url)
     dispatchedOrders.value = res.data
+    syncEmpNameMap(res.data)
   } catch (error) {
     ElMessage.error('拉取已派工记录失败')
   }
