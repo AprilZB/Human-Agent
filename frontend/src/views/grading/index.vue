@@ -62,7 +62,7 @@
         <el-table-column 
           v-for="day in daysInMonth" 
           :key="day" 
-          width="48"
+          width="50"
           align="center"
           :class-name="getColumnClassName(day)"
           :label-class-name="getHeaderClassName(day)"
@@ -72,9 +72,7 @@
               <div class="header-day-num">{{ day }}</div>
               <div class="header-weekday">{{ getWeekdayText(day) }}</div>
               <span v-if="isToday(day)" class="header-badge badge-today">今</span>
-              <span v-else-if="getHolidayName(day)" class="header-badge badge-holiday">
-                {{ getHolidayName(day).length <= 2 ? getHolidayName(day) : '休' }}
-              </span>
+              <span v-else-if="isHoliday(day)" class="header-badge badge-holiday">休</span>
             </div>
           </template>
           <template #default="scope">
@@ -515,7 +513,8 @@ onMounted(() => {
   justify-content: center;
   line-height: 1.2;
   cursor: default;
-  padding: 1px 0;
+  padding: 3px 0 2px 0;
+  width: 100%;
 }
 .header-day-num {
   font-size: 13px;
@@ -530,14 +529,19 @@ onMounted(() => {
 }
 .header-badge {
   position: absolute;
-  top: -6px;
-  right: -8px;
-  font-size: 9px;
-  line-height: 1;
-  padding: 1px 2px;
+  top: 1px;
+  right: 1px;
+  font-size: 10px;
+  line-height: 12px;
+  height: 12px;
+  padding: 0 2px;
   border-radius: 2px;
   font-weight: bold;
-  transform: scale(0.85);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  white-space: nowrap;
 }
 .badge-today {
   background-color: #ffffff;
@@ -550,11 +554,18 @@ onMounted(() => {
   box-shadow: 0 1px 2px rgba(245, 108, 108, 0.4);
 }
 
-/* Table Header Custom Colors */
+/* Ensure cell does not clip the header content */
 :deep(.excel-table th.col-day-th) {
-  padding: 3px 0 !important;
+  padding: 2px 0 !important;
   transition: all 0.2s ease;
   user-select: none;
+  overflow: visible !important;
+}
+
+:deep(.excel-table th.col-day-th .cell) {
+  overflow: visible !important;
+  padding: 0 1px !important;
+  line-height: normal !important;
 }
 
 /* Today (Highest priority for th) */
