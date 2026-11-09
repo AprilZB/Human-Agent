@@ -121,7 +121,15 @@ async def run_intelligent_matching(db: Session, work_order_code: str):
     assignments = []
     for candidate in selected:
         matched_skill_name = "PI中包装" if any("中包" in s for s in candidate['skills']) else (candidate['skills'][0] if candidate['skills'] else "中包装工序")
-        grade_desc = f"前日考评{candidate['recent_score']}分表现稳定" if candidate['recent_score'] >= 86 else f"前日考评{candidate['recent_score']}分"
+        s_val = candidate['recent_score']
+        if s_val > 0:
+            grade_desc = f"前日考评评定良好(+{s_val}分)"
+        elif s_val == 0:
+            grade_desc = "前日考评表现稳定(0分)"
+        elif s_val < 0:
+            grade_desc = f"前日考评表现较弱({s_val}分)"
+        else:
+            grade_desc = f"前日考评{s_val}分"
         default_reason = f"{candidate['name']}：具备【{matched_skill_name}】工序技能认证，今日白班已按时打卡在岗，9月累计加班{candidate['overtime_hours']}H(合规)，{grade_desc}。"
         
         reason = None

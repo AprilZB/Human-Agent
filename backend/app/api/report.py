@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request, send_file
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from datetime import datetime, timedelta
 import calendar
 from app.core.database import SessionLocal
@@ -114,6 +114,52 @@ def get_employee_overtime_detail(employee_id):
     finally:
         db.close()
 
+
+def get_target_team_member_ids(db, start_date=None, end_date=None, team_leader_id=None):
+    """
+    获取中包车间班组成员（优先王军班组及下属组员，杜绝全厂数千人员导致前端卡死）
+    """
+    # 核心中包车间班组成员
+    core_ids = ['404201195', '404245800', '404245815', '404266762', '411265010', '404267095', '411265016', '411265017']
+    
+    # 动态支持当前班组长的直接下属
+    leader_subordinate_ids = []
+    if team_leader_id:
+        leader_emps = db.query(BaseEmployee.employee_id).filter(
+            or_(BaseEmployee.direct_manager_id == str(team_leader_id), BaseEmployee.direct_manager_name == '王军')
+        ).all()
+        leader_subordinate_ids = [e[0] for e in leader_emps]
+    else:
+        leader_emps = db.query(BaseEmployee.employee_id).filter(
+            or_(BaseEmployee.direct_manager_id == '404201195', BaseEmployee.direct_manager_name == '王军')
+        ).all()
+        leader_subordinate_ids = [e[0] for e in leader_emps]
+
+    # 当月中包车间打卡考勤与考评人员
+    att_q = db.query(BizEmployeeAttendance.employee_id)
+    if start_date and end_date:
+        att_q = att_q.filter(
+            BizEmployeeAttendance.attendance_date >= start_date,
+            BizEmployeeAttendance.attendance_date <= end_date
+        )
+    att_eids = [r[0] for r in att_q.distinct().all()]
+
+    grade_q = db.query(BizEmployeeDailyGrade.employee_id)
+    if start_date and end_date:
+        grade_q = grade_q.filter(
+            BizEmployeeDailyGrade.grade_date >= start_date,
+            BizEmployeeDailyGrade.grade_date <= end_date
+        )
+    grade_eids = [r[0] for r in grade_q.distinct().all()]
+
+    res = []
+    seen = set()
+    for eid in core_ids + leader_subordinate_ids + att_eids + grade_eids:
+        if eid and eid not in seen:
+            seen.add(eid)
+            res.append(eid)
+    return res
+
 @report_bp.route("/grading", methods=["GET"])
 def get_grading_report():
     db = SessionLocal()
@@ -127,14 +173,17 @@ def get_grading_report():
         _, last_day = calendar.monthrange(year, month)
         end_date = datetime(year, month, last_day).date()
 
-        workshop_code = request.args.get('workshop_code')
-        # Get all employees
-        q = db.query(BaseEmployee)
-        if workshop_code:
-            q = q.filter_by(workshop_code=workshop_code)
-        employees = q.all()
+        team_leader_id = request.args.get('team_leader_id')
+        # 仅筛选中包车间班组成员，避免渲染数千员工导致界面卡死
+        member_ids = get_target_team_member_ids(db, start_date, end_date, team_leader_id)
+        
+        employees = db.query(BaseEmployee).filter(BaseEmployee.employee_id.in_(member_ids)).all()
+        emp_dict = {e.employee_id: e for e in employees}
+        sorted_employees = [emp_dict[eid] for eid in member_ids if eid in emp_dict]
+
         # Get grades for the month
         grades = db.query(BizEmployeeDailyGrade).filter(
+            BizEmployeeDailyGrade.employee_id.in_(member_ids),
             BizEmployeeDailyGrade.grade_date >= start_date,
             BizEmployeeDailyGrade.grade_date <= end_date
         ).all()
@@ -144,14 +193,21 @@ def get_grading_report():
             d_str = str(g.grade_date)
             if g.employee_id not in grade_map:
                 grade_map[g.employee_id] = {}
-            grade_map[g.employee_id][d_str] = g.score
+            score = g.score
+            if score is not None and score >= 50:
+                score = score - 86
+            grade_map[g.employee_id][d_str] = score
 
         res = []
-        for e in employees:
+        for e in sorted_employees:
+            e_grades = grade_map.get(e.employee_id, {})
+            month_delta = sum(v for v in e_grades.values() if isinstance(v, (int, float)))
             res.append({
                 "employee_id": e.employee_id,
                 "employee_name": e.name,
-                "grades": grade_map.get(e.employee_id, {})
+                "grades": e_grades,
+                "total_delta": month_delta,
+                "monthly_score": 80 + month_delta
             })
         return jsonify(res)
     finally:
@@ -181,6 +237,19 @@ def save_daily_grade():
     finally:
         db.close()
 
+@report_bp.route("/grading", methods=["DELETE"])
+def delete_daily_grade():
+    db = SessionLocal()
+    try:
+        emp_id = request.args.get('employee_id')
+        g_date = request.args.get('grade_date')
+        if emp_id and g_date:
+            db.query(BizEmployeeDailyGrade).filter_by(employee_id=emp_id, grade_date=g_date).delete()
+            db.commit()
+        return jsonify({"message": "success"})
+    finally:
+        db.close()
+
 @report_bp.route("/grading/template", methods=["GET"])
 def download_grading_template():
     import io
@@ -196,38 +265,40 @@ def download_grading_template():
     ws = wb.active
     ws.title = f"{month}月考评矩阵"
 
-    headers = ["工号", "姓名"] + [f"{d}" for d in range(1, days_count + 1)]
+    headers = ["工号", "姓名"] + [f"{d}" for d in range(1, days_count + 1)] + ["月度分数"]
     ws.append(headers)
 
     db = SessionLocal()
     try:
-        emps = db.query(BaseEmployee).filter_by(workshop_code='中包车间').all()
-        if not emps:
-            emps = db.query(BaseEmployee).all()
+        member_ids = get_target_team_member_ids(db)
+        emps = db.query(BaseEmployee).filter(BaseEmployee.employee_id.in_(member_ids)).all()
+        emp_dict = {e.employee_id: e for e in emps}
+        sorted_emps = [emp_dict[eid] for eid in member_ids if eid in emp_dict]
 
-        for e in emps:
-            sample_scores = [86] * days_count
+        for e in sorted_emps:
+            sample_scores = [0] * days_count
             for d in range(1, days_count + 1):
                 try:
                     wd = datetime(year, month, d).weekday()
                     if wd in (5, 6):
-                        sample_scores[d - 1] = 0
+                        sample_scores[d - 1] = "休"
                 except:
                     pass
-            ws.append([e.employee_id, e.name] + sample_scores)
+            formula = f"=80+SUM(C{ws.max_row+1}:{openpyxl.utils.get_column_letter(days_count+2)}{ws.max_row+1})"
+            ws.append([e.employee_id, e.name] + sample_scores + [formula])
     finally:
         db.close()
 
     # Sheet 2: 清单明细格式
     ws2 = wb.create_sheet(title="清单格式(可选)")
-    ws2.append(["工号", "姓名", "考评日期", "得分", "备注"])
-    ws2.append(["404201195", "王军", f"{year}-{month:02d}-24", 86, "考评达标"])
-    ws2.append(["404245800", "刘端阳", f"{year}-{month:02d}-24", 90, "表现优异加分"])
+    ws2.append(["工号", "姓名", "考评日期", "加减分(-4到4)", "备注"])
+    ws2.append(["404201195", "王军", f"{year}-{month:02d}-24", 0, "表现平稳"])
+    ws2.append(["404245800", "刘端阳", f"{year}-{month:02d}-24", 2, "表现优异加分"])
 
     out = io.BytesIO()
     wb.save(out)
     out.seek(0)
-    return send_file(out, download_name=f"员工考评导入模板_{month_str}.xlsx", as_attachment=True)
+    return send_file(out, download_name=f"中包车间员工考评导入模板_{month_str}.xlsx", as_attachment=True)
 
 
 @report_bp.route("/grading/export", methods=["GET"])
@@ -248,18 +319,18 @@ def export_grading_data():
     ws = wb.active
     ws.title = f"{month}月考评表"
 
-    headers = ["工号", "姓名"] + [f"{d}" for d in range(1, days_count + 1)]
+    headers = ["工号", "姓名"] + [f"{d}" for d in range(1, days_count + 1)] + ["月度分数"]
     ws.append(headers)
 
     db = SessionLocal()
     try:
-        workshop_code = request.args.get('workshop_code')
-        q = db.query(BaseEmployee)
-        if workshop_code:
-            q = q.filter_by(workshop_code=workshop_code)
-        employees = q.all()
+        member_ids = get_target_team_member_ids(db, start_date, end_date)
+        employees = db.query(BaseEmployee).filter(BaseEmployee.employee_id.in_(member_ids)).all()
+        emp_dict = {e.employee_id: e for e in employees}
+        sorted_emps = [emp_dict[eid] for eid in member_ids if eid in emp_dict]
 
         grades = db.query(BizEmployeeDailyGrade).filter(
+            BizEmployeeDailyGrade.employee_id.in_(member_ids),
             BizEmployeeDailyGrade.grade_date >= start_date,
             BizEmployeeDailyGrade.grade_date <= end_date
         ).all()
@@ -269,15 +340,25 @@ def export_grading_data():
             d_str = str(g.grade_date)
             if g.employee_id not in grade_map:
                 grade_map[g.employee_id] = {}
-            grade_map[g.employee_id][d_str] = g.score
+            score = g.score
+            if score is not None and score >= 50:
+                score = score - 86
+            grade_map[g.employee_id][d_str] = score
 
-        for e in employees:
+        for e in sorted_emps:
             row_data = [e.employee_id, e.name]
             e_grades = grade_map.get(e.employee_id, {})
+            total_delta = 0
             for d in range(1, days_count + 1):
                 d_str = f"{year}-{month:02d}-{d:02d}"
                 val = e_grades.get(d_str, "")
-                row_data.append(val if val != "" else "")
+                if val != "" and val is not None:
+                    row_data.append(val)
+                    if isinstance(val, (int, float)):
+                        total_delta += val
+                else:
+                    row_data.append("休")
+            row_data.append(80 + total_delta)
             ws.append(row_data)
     finally:
         db.close()
@@ -285,7 +366,7 @@ def export_grading_data():
     out = io.BytesIO()
     wb.save(out)
     out.seek(0)
-    return send_file(out, download_name=f"员工考评数据_{month_str}.xlsx", as_attachment=True)
+    return send_file(out, download_name=f"中包车间员工考评数据_{month_str}.xlsx", as_attachment=True)
 
 
 @report_bp.route("/grading/import", methods=["POST"])
